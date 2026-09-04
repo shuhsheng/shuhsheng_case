@@ -138,15 +138,17 @@ if menu_choice == "📖 突發案件與處置知識庫":
                 else:
                     try:
                         valid_problem = problem.strip() if problem.strip() else title.strip()
+                        now_str = datetime.now().isoformat()
                         
-                        # 同時寫入 solution、result 與 details，徹底滿足所有 not-null 限制
+                        # 補齊 created_at 與所有對應欄位
                         payload = {
                             "title": title.strip(),
                             "problem": valid_problem,
                             "solution": solution.strip(),
                             "result": solution.strip(),
                             "details": solution.strip(),
-                            "created_by": created_by.strip()
+                            "created_by": created_by.strip(),
+                            "created_at": now_str
                         }
                         supabase.table("cases").insert(payload).execute()
                         st.success("✅ 案例新增成功！已納入同仁查詢庫。")
@@ -231,6 +233,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             display_df = filtered_df[[c for c in show_cols.keys() if c in filtered_df.columns]].rename(columns=show_cols)
             st.dataframe(display_df, use_container_width=True)
 
+            # 標記單次訪視結果
             st.markdown("---")
             st.markdown("#### ✍️ 標記單次訪視結果")
             with st.form("update_visit_form"):
