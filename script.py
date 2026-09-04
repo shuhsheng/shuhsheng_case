@@ -4,98 +4,12 @@ from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from supabase import create_client, Client
 
-# 設定網頁標題與排版
+# 設定網頁標題與寬版
 st.set_page_config(
     page_title="業務管理與服務追蹤系統",
     page_icon="📋",
     layout="wide"
 )
-
-# -------------------------------------------------------------
-# 現代高清晰商務風格 CSS（微軟正黑體 / 系統黑體，修復圖示重疊問題）
-# -------------------------------------------------------------
-st.markdown("""
-<style>
-    /* 1. 採用清晰易讀的企業級繁體黑體，解決標楷體模糊鋸齒問題 */
-    html, body, [class*="css"], .stMarkdown, .stText, .stTextInput, .stSelectbox, .stTextArea, .stDataFrame, p, span, label, input, button, select {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", "微軟正黑體", "Noto Sans TC", "PingFang TC", sans-serif !important;
-        -webkit-font-smoothing: antialiased;
-    }
-
-    /* 2. 背景優化：採用溫暖高雅的淺灰底，降低眼睛疲勞 */
-    .stApp {
-        background-color: #F8FAFC;
-    }
-
-    /* 3. 標題設計：深邃沉穩海軍藍，字級適中 */
-    h1 {
-        color: #0F172A !important;
-        font-weight: 700 !important;
-        font-size: 1.85rem !important;
-        border-bottom: 3px solid #1E40AF;
-        padding-bottom: 10px;
-        margin-bottom: 22px !important;
-    }
-    h2, h3, h4 {
-        color: #1E293B !important;
-        font-weight: 600 !important;
-    }
-
-    /* 4. 修復圖示重疊：嚴格限制只對文字層套用樣式，不破壞 Streamlit 箭頭圖示 */
-    [data-testid="stExpander"] summary {
-        background-color: #FFFFFF !important;
-        border: 1px solid #CBD5E1 !important;
-        border-radius: 8px !important;
-        padding: 12px 16px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        transition: background-color 0.2s;
-    }
-    [data-testid="stExpander"] summary:hover {
-        background-color: #F1F5F9 !important;
-    }
-    [data-testid="stExpander"] summary p {
-        font-size: 1.05rem !important;
-        font-weight: 600 !important;
-        color: #0F172A !important;
-        letter-spacing: 0.3px;
-        margin: 0 !important;
-    }
-    [data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
-        background-color: #FFFFFF;
-        border: 1px solid #CBD5E1;
-        border-top: none;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
-        padding: 18px !important;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-    }
-
-    /* 5. 側邊欄商務深藍風格 */
-    [data-testid="stSidebar"] {
-        background-color: #0F172A;
-    }
-    [data-testid="stSidebar"] * {
-        color: #F8FAFC !important;
-    }
-    [data-testid="stSidebar"] .stRadio label {
-        font-size: 1.02rem;
-        padding: 5px 0;
-    }
-
-    /* 6. 按鈕專業質感 */
-    .stButton>button {
-        border-radius: 6px;
-        font-weight: 600;
-        padding: 6px 18px;
-        transition: all 0.2s ease-in-out;
-    }
-
-    /* 7. 表格字體放大清晰 */
-    [data-testid="stDataFrame"] * {
-        font-size: 0.96rem !important;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 # -------------------------------------------------------------
 # 1. 資料庫連線 (Supabase)
@@ -113,11 +27,11 @@ except Exception as e:
     st.stop()
 
 # -------------------------------------------------------------
-# 2. 側邊欄導航 (獨立模組)
+# 2. 側邊欄選單
 # -------------------------------------------------------------
-st.sidebar.markdown("### 🏢 系統作業選單")
+st.sidebar.title("📌 系統選單")
 menu_choice = st.sidebar.radio(
-    "請選擇作業系統：",
+    "請選擇作業功能：",
     ["📖 突發案件與處置知識庫", "🗓️ 移工雙月服務週期排程"]
 )
 
@@ -166,12 +80,12 @@ if menu_choice == "📖 突發案件與處置知識庫":
                 c_solution = case.get("solution", "") or case.get("result", "") or case.get("details", "") or ""
                 ctime = case.get("created_at", "")[:16].replace("T", " ") if case.get("created_at") else ""
 
-                with st.expander(f"📌 {ctitle}（建檔人：{c_created_by} ｜ 時間：{ctime}）"):
+                with st.expander(f"{ctitle} ｜ 建檔人：{c_created_by} ｜ 時間：{ctime}"):
                     if c_problem and c_problem != ctitle:
-                        st.markdown("**❓ 遇到問題 / 狀況描述：**")
+                        st.markdown("**【狀況描述】**")
                         st.write(c_problem)
                     
-                    st.markdown("**💡 具體處理方式 / 處置 SOP：**")
+                    st.markdown("**【具體處理方式 / 處置流程】**")
                     st.info(c_solution if c_solution else "無記錄處置細節")
                     
                     st.markdown("---")
@@ -242,11 +156,11 @@ if menu_choice == "📖 突發案件與處置知識庫":
                         st.error(f"新增失敗: {err}")
 
 # =============================================================
-# 功能分頁 B：移工雙月服務週期排程（一人一行版）
+# 功能分頁 B：移工雙月服務週期排程（一人一行 + 直接打勾）
 # =============================================================
 elif menu_choice == "🗓️ 移工雙月服務週期排程":
-    st.title("🗓️ 移工雙月服務週期排程系統")
-    st.caption("一人一行總覽名冊，依入境或承接日起算 3 年（18 期）定期訪視行程，支援直覺勾選與狀態動態維護。")
+    st.title("🗓️ 移工雙月服務週期排程")
+    st.caption("一人一行管理模式：一覽移工目前在職動態與最新訪視進度，展開即可直接勾選。")
 
     sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
         "👥 移工服務名冊與直接勾選", 
@@ -333,7 +247,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
 
             st.write(f"移工總數：共 **{len(flt)}** 位")
 
-            # 逐位呈現卡片（標題已修復重疊問題）
+            # 逐位呈現卡片
             for _, item in flt.iterrows():
                 w_name = item["移工姓名"]
                 emp = item["雇主名稱"]
@@ -343,11 +257,11 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 is_ov = item["是否逾期"]
                 g_df = item["group_df"].sort_values("period_number").copy()
 
-                alert_prefix = "【逾期需訪視】" if is_ov and emp_stat == "在職中" else ""
+                alert_prefix = "【逾期待訪】" if is_ov and emp_stat == "在職中" else ""
                 card_title = f"{alert_prefix}{w_name} ｜ 雇主：{emp} ｜ 狀態：{emp_stat} ｜ 進度：{prog} ｜ 下次訪視：{nxt}"
 
                 with st.expander(card_title):
-                    st.info("💡 **操作指引**：在「是否已完成？」方塊直接點擊打勾，完成後點選下方「儲存訪視勾選變更」按鈕即可存檔。")
+                    st.info("💡 操作方式：在下方表格第一欄直接勾選「是否已完成」，完成後點選「儲存訪視勾選變更」即可存檔。")
                     
                     edit_df = pd.DataFrame({
                         "id": g_df["id"],
@@ -413,7 +327,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
     # ---------------- 2-2. 移工動態變更 ----------------
     with sub_tab2:
         st.subheader("⚠️ 移工狀態動態管理（失聯 / 轉出 / 離境 / 隨時恢復在職）")
-        st.info("💡 **彈性說明**：若移工發生狀況，可一鍵將未來尚未訪視的期別改為免訪視；若狀況解除，可隨時切回「在職中」恢復排程！先前已訪視紀錄均完整保存。")
+        st.info("💡 彈性說明：若移工發生狀況，可一鍵將未來尚未訪視的期別改為免訪視；若狀況解除，可隨時切回「在職中」恢復排程！先前已訪視紀錄均完整保存。")
 
         try:
             worker_list_res = supabase.table("worker_service_schedules").select("worker_name, employer_name, worker_id, employment_status, status_reason").execute().data
