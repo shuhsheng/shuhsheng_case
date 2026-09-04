@@ -27,7 +27,7 @@ except Exception as e:
     st.stop()
 
 # -------------------------------------------------------------
-# 2. 側邊欄導航 (獨立分頁)
+# 2. 側邊欄導航
 # -------------------------------------------------------------
 st.sidebar.title("📌 功能選單")
 menu_choice = st.sidebar.radio(
@@ -51,7 +51,6 @@ if menu_choice == "📖 突發案件與處置知識庫":
 
     tab1, tab2 = st.tabs(["🔍 查詢處置經驗與 SOP", "➕ 建立新案例紀錄"])
     
-    # ---------------- 1. 查詢處置方式 ----------------
     with tab1:
         st.subheader("案例檢索")
         search_query = st.text_input("🔍 輸入關鍵字查詢（如：健檢不合格、失聯、急診、證件補發...）：")
@@ -118,7 +117,6 @@ if menu_choice == "📖 突發案件與處置知識庫":
         else:
             st.info("查無相關案例。如果解決了新狀況，歡迎點上方分頁建立紀錄！")
 
-    # ---------------- 2. 新增案例 ----------------
     with tab2:
         st.subheader("新增案例處置經驗")
         with st.form("new_case_knowledge_form", clear_on_submit=True):
@@ -156,20 +154,20 @@ if menu_choice == "📖 突發案件與處置知識庫":
                         st.error(f"新增失敗: {err}")
 
 # =============================================================
-# 功能分頁 B：移工雙月服務週期排程（一人一行版）
+# 功能分頁 B：移工雙月服務週期排程（直接打勾版）
 # =============================================================
 elif menu_choice == "🗓️ 移工雙月服務週期排程":
-    st.title("🗓️ 移工雙月服務週期排程與追蹤")
-    st.caption("一人一行管理模式：一覽移工目前在職動態與最新訪視進度，展開即可勾選紀錄。")
+    st.title("🗓️ 移工雙月服務週期排程")
+    st.caption("直覺勾選模式：點開移工卡片，在表格第一欄直接勾選「✅ 已完成」，系統自動即時存檔！")
 
     sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
-        "👥 移工服務清單（一人一行）", 
+        "👥 移工名單與直接勾選", 
         "⚠️ 移工狀態動態變更 / 隨時恢復",
         "📤 批次匯入移工名單 (Excel/CSV)", 
         "➕ 單筆手動建立"
     ])
 
-    # ---------------- 2-1. 一人一行移工名冊與進度 ----------------
+    # ---------------- 2-1. 一人一行 + 直接勾選 ----------------
     with sub_tab1:
         st.subheader("移工清單總覽")
         try:
@@ -185,17 +183,20 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 df["employment_status"] = "在職中"
             if "status_reason" not in df.columns:
                 df["status_reason"] = ""
+            if "notes" not in df.columns:
+                df["notes"] = ""
+            if "visit_date" not in df.columns:
+                df["visit_date"] = None
 
-            # 依移工分組，聚合出「一人一行」的主表
-            summary_list = []
+            # 依移工分組主清單
             today = date.today()
             grouped = df.groupby(["worker_name", "employer_name", "worker_id", "start_date", "employment_status", "status_reason"], dropna=False)
 
+            summary_list = []
             for (w_name, emp, wid, s_date, emp_stat, s_reason), g in grouped:
-                total_periods = len(g)
-                done_periods = len(g[g["status"] == "已完成"])
+                total_p = len(g)
+                done_p = len(g[g["status"] == "已完成"])
                 
-                # 尋找下一次待訪視的排程
                 pending = g[g["status"] == "待訪視"].sort_values("target_date")
                 if not pending.empty:
                     next_target = pending.iloc[0]["target_date"]
@@ -211,8 +212,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                     "移工姓名": w_name,
                     "雇主名稱": emp if emp else "-",
                     "在職狀態": emp_stat if emp_stat else "在職中",
-                    "入境/承接日": s_date,
-                    "進度": f"{done_periods} / {total_periods}",
+                    "進度": f"{done_p} / {total_p}",
                     "下次預定訪視": next_info,
                     "是否逾期": is_overdue,
                     "raw_next_date": next_target,
@@ -221,7 +221,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
 
             summary_df = pd.DataFrame(summary_list)
 
-            # 頂部篩選條件
+            # 快速篩選工具
             c_f1, c_f2, c_f3 = st.columns(3)
             with c_f1:
                 stat_filter = st.multiselect("在職狀態篩選", options=["在職中", "失聯(逃跑)", "已轉出", "提前離境", "解約/終止"], default=["在職中"])
@@ -230,7 +230,6 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             with c_f3:
                 time_flt = st.selectbox("訪視時程篩選", ["全部", "即日起 30 天內待訪視", "即日起 60 天內待訪視", "已有逾期待訪視"])
 
-            # 執行過濾
             flt = summary_df.copy()
             if stat_filter:
                 flt = flt[flt["在職狀態"].isin(stat_filter)]
@@ -246,7 +245,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
 
             st.write(f"移工總數：共 **{len(flt)}** 位")
 
-            # 逐位呈現（一行一個移工）
+            # 逐位移工卡片
             for _, item in flt.iterrows():
                 w_name = item["移工姓名"]
                 emp = item["雇主名稱"]
@@ -254,56 +253,76 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 prog = item["進度"]
                 nxt = item["下次預定訪視"]
                 is_ov = item["是否逾期"]
-                g_df = item["group_df"].sort_values("period_number")
+                g_df = item["group_df"].sort_values("period_number").copy()
 
                 alert_badge = "🚨 " if is_ov and emp_stat == "在職中" else ""
                 card_title = f"{alert_badge}{w_name} ｜ 雇主：{emp} ｜ 狀態：{emp_stat} ｜ 進度：{prog} ｜ 下次訪視：{nxt}"
 
                 with st.expander(card_title):
-                    st.markdown(f"#### 📅 【{w_name}】3 年雙月服務期程明細")
+                    st.info("💡 **操作方式**：點擊第一欄的「是否已完成」方塊直接打勾，打勾後下方會出現確認按鈕，點一下就自動儲存！")
                     
-                    # 呈現這 18 期的表格
-                    display_cols = {
-                        "period_number": "期別",
-                        "target_date": "預定訪視日",
-                        "status": "訪視狀態",
-                        "visit_date": "實際訪視日",
-                        "notes": "備註說明"
-                    }
-                    st.dataframe(g_df[list(display_cols.keys())].rename(columns=display_cols), use_container_width=True, hide_index=True)
+                    # 建立打勾專用 DataFrame
+                    edit_df = pd.DataFrame({
+                        "id": g_df["id"],
+                        "已完成訪視": g_df["status"] == "已完成",
+                        "期別": g_df["period_number"].apply(lambda x: f"第 {x} 期"),
+                        "預定訪視日": g_df["target_date"].astype(str),
+                        "實際完成日": g_df["visit_date"].fillna(""),
+                        "備註說明": g_df["notes"].fillna("")
+                    })
 
-                    st.markdown("##### ✍️ 勾選 / 變更期別進度")
-                    
-                    # 提供下拉選期別直接勾選，不需查 ID
-                    periods_list = g_df["period_number"].tolist()
-                    default_choice = g_df[g_df["status"] == "待訪視"]["period_number"].tolist()
-                    selected_period = st.selectbox(
-                        f"選擇要更新的期別", 
-                        periods_list, 
-                        index=periods_list.index(default_choice[0]) if default_choice else 0,
-                        key=f"sel_p_{w_name}_{emp}"
+                    # 可直接在畫面上點選打勾的表格
+                    edited_result = st.data_editor(
+                        edit_df,
+                        column_config={
+                            "id": None, # 隱藏後台用ID
+                            "已完成訪視": st.column_config.CheckboxColumn(
+                                "是否已完成？",
+                                help="勾選代表已完成此期訪視，取消勾選代表恢復為待訪視",
+                                default=False,
+                            ),
+                            "期別": st.column_config.TextColumn("期別", disabled=True),
+                            "預定訪視日": st.column_config.TextColumn("預定訪視日", disabled=True),
+                            "實際完成日": st.column_config.TextColumn("實際完成日"),
+                            "備註說明": st.column_config.TextColumn("備註說明"),
+                        },
+                        disabled=["期別", "預定訪視日"],
+                        hide_index=True,
+                        use_container_width=True,
+                        key=f"editor_{w_name}_{emp}"
                     )
 
-                    target_row = g_df[g_df["period_number"] == selected_period].iloc[0]
-                    target_sched_id = target_row["id"]
+                    # 檢查是否有任何勾選異動，若有變更顯示儲存按鈕
+                    diff = edited_result["已完成訪視"] != edit_df["已完成訪視"]
+                    diff_notes = edited_result["備註說明"] != edit_df["備註說明"]
+                    diff_dates = edited_result["實際完成日"] != edit_df["實際完成日"]
 
-                    with st.form(f"form_quick_{w_name}_{selected_period}"):
-                        cu1, cu2, cu3 = st.columns([1.5, 1.5, 3])
-                        with cu1:
-                            new_st = st.selectbox("狀態變更", ["已完成", "待訪視", "暫緩", "已終止(免訪視)"], index=0)
-                        with cu2:
-                            actual_dt = st.date_input("完成日期", value=date.today())
-                        with cu3:
-                            v_note = st.text_input("訪視備註", value=target_row.get("notes") or "")
+                    if diff.any() or diff_notes.any() or diff_dates.any():
+                        if st.button("💾 儲存訪視勾選變更", type="primary", key=f"btn_save_{w_name}_{emp}"):
+                            with st.spinner("正在儲存..."):
+                                for idx, row in edited_result.iterrows():
+                                    sched_id = int(row["id"])
+                                    is_done = row["已完成訪視"]
+                                    old_done = edit_df.loc[idx, "已完成訪視"]
+                                    note_val = str(row["備註說明"]).strip()
+                                    
+                                    # 決定訪視日期：若是剛打勾且沒填日期，自動帶入今天
+                                    if is_done:
+                                        new_status = "已完成"
+                                        cur_date = str(row["實際完成日"]).strip()
+                                        visit_dt = cur_date if cur_date else date.today().strftime("%Y-%m-%d")
+                                    else:
+                                        new_status = "待訪視"
+                                        visit_dt = None
 
-                        if st.form_submit_button(f"儲存第 {selected_period} 期紀錄"):
-                            payload_up = {
-                                "status": new_st,
-                                "visit_date": actual_dt.strftime("%Y-%m-%d") if new_st == "已完成" else None,
-                                "notes": v_note.strip()
-                            }
-                            supabase.table("worker_service_schedules").update(payload_up).eq("id", target_sched_id).execute()
-                            st.success(f"✅ 第 {selected_period} 期訪視紀錄已儲存！")
+                                    # 送回 Supabase
+                                    supabase.table("worker_service_schedules").update({
+                                        "status": new_status,
+                                        "visit_date": visit_dt,
+                                        "notes": note_val
+                                    }).eq("id", sched_id).execute()
+
+                            st.success("✅ 勾選紀錄已成功儲存！")
                             st.rerun()
 
         else:
