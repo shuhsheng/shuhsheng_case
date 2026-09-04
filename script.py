@@ -36,7 +36,7 @@ menu_choice = st.sidebar.radio(
 )
 
 # =============================================================
-# 功能分頁 A：突發案件與處置知識庫（SOP/前人經驗速查）
+# 功能分頁 A：突發案件與處置知識庫
 # =============================================================
 if menu_choice == "📖 突發案件與處置知識庫":
     st.title("📖 突發案件與處置經驗庫")
@@ -63,7 +63,9 @@ if menu_choice == "📖 突發案件與處置知識庫":
             filtered_cases = [
                 c for c in filtered_cases 
                 if q in str(c.get("title", "")).lower() 
-                or q in str(c.get("details", "")).lower() 
+                or q in str(c.get("problem", "")).lower()
+                or q in str(c.get("solution", "")).lower()
+                or q in str(c.get("details", "")).lower()
                 or q in str(c.get("created_by", "")).lower()
             ]
 
@@ -74,29 +76,38 @@ if menu_choice == "📖 突發案件與處置知識庫":
                 cid = case["id"]
                 ctitle = case.get("title", "無主旨")
                 c_created_by = case.get("created_by") or "未具名"
-                cdetails = case.get("details", "") or "無紀錄處置細節"
+                
+                # 兼容不同命名：優先抓 problem / solution / details
+                c_problem = case.get("problem", "") or ""
+                c_solution = case.get("solution", "") or case.get("details", "") or ""
                 ctime = case.get("created_at", "")[:16].replace("T", " ") if case.get("created_at") else ""
 
-                # 展開式卡片：以標題和建檔人為主
                 with st.expander(f"📌 {ctitle}（建檔人：{c_created_by} ｜ {ctime}）"):
-                    st.markdown("#### 💡 處理方式 / 處置流程：")
-                    st.info(cdetails)
+                    if c_problem and c_problem != ctitle:
+                        st.markdown("**❓ 遇到問題 / 狀況描述：**")
+                        st.write(c_problem)
+                    
+                    st.markdown("**💡 處理方式 / 處置流程：**")
+                    st.info(c_solution if c_solution else "無記錄處置細節")
                     
                     st.markdown("---")
-                    # 提供修改與刪除選項
                     col_act1, col_act2 = st.columns([3, 1])
                     with col_act1:
                         with st.popover("✏️ 修改這筆內容"):
                             with st.form(f"edit_case_{cid}"):
-                                edit_title = st.text_input("狀況主旨 / 標題", value=ctitle)
+                                edit_title = st.text_input("狀況標題", value=ctitle)
                                 edit_created_by = st.text_input("建檔人", value=c_created_by)
-                                edit_details = st.text_area("處理方式 / 處置紀錄", value=cdetails, height=180)
+                                edit_problem = st.text_area("遇到狀況描述", value=c_problem, height=90)
+                                edit_solution = st.text_area("處理方式 / SOP", value=c_solution, height=150)
                                 if st.form_submit_button("儲存修改"):
-                                    supabase.table("cases").update({
+                                    up_data = {
                                         "title": edit_title.strip(),
                                         "created_by": edit_created_by.strip(),
-                                        "details": edit_details.strip()
-                                    }).eq("id", cid).execute()
+                                        "problem": edit_problem.strip(),
+                                        "solution": edit_solution.strip(),
+                                        "details": edit_solution.strip()
+                                    }
+                                    supabase.table("cases").update(up_data).eq("id", cid).execute()
                                     st.success("修改已儲存！")
                                     st.rerun()
 
@@ -114,7 +125,8 @@ if menu_choice == "📖 突發案件與處置知識庫":
         with st.form("new_case_knowledge_form", clear_on_submit=True):
             title = st.text_input("狀況標題 / 發生問題 *", placeholder="例：移工居留證過期如何急件補辦、健檢胸部X光疑似異常處理流程")
             created_by = st.text_input("建檔人 *", placeholder="請填寫您的姓名")
-            details = st.text_area("具體處理方式 / 處置 SOP / 注意事項 *", height=200, placeholder="請詳細記錄處理步驟、聯絡了哪個窗口、準備了什麼文件，方便日後同仁直接照著做...")
+            problem = st.text_area("問題狀況補充說明 (選填)", placeholder="若標題已足夠清楚可留空，或補充案件當下的具體細節...")
+            solution = st.text_area("具體處理方式 / 處置 SOP / 注意事項 *", height=180, placeholder="請詳細記錄處理步驟、聯絡窗口、應備文件，方便日後同仁直接照做...")
             
             submitted = st.form_submit_button("確認建立此案例")
             if submitted:
@@ -122,14 +134,19 @@ if menu_choice == "📖 突發案件與處置知識庫":
                     st.warning("請填寫狀況標題！")
                 elif not created_by.strip():
                     st.warning("請填寫建檔人！")
-                elif not details.strip():
+                elif not solution.strip():
                     st.warning("請填寫具體處理方式！")
                 else:
                     try:
+                        # 確保 problem 欄位絕對不為空（若選填未填，自動以標題代入，滿足 not-null 要求）
+                        valid_problem = problem.strip() if problem.strip() else title.strip()
+                        
                         payload = {
                             "title": title.strip(),
-                            "created_by": created_by.strip(),
-                            "details": details.strip()
+                            "problem": valid_problem,
+                            "solution": solution.strip(),
+                            "details": solution.strip(),
+                            "created_by": created_by.strip()
                         }
                         supabase.table("cases").insert(payload).execute()
                         st.success("✅ 案例新增成功！已納入同仁查詢庫。")
@@ -214,7 +231,6 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             display_df = filtered_df[[c for c in show_cols.keys() if c in filtered_df.columns]].rename(columns=show_cols)
             st.dataframe(display_df, use_container_width=True)
 
-            # 標記單次訪視結果
             st.markdown("---")
             st.markdown("#### ✍️ 標記單次訪視結果")
             with st.form("update_visit_form"):
