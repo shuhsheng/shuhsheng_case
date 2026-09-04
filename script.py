@@ -42,7 +42,6 @@ if menu_choice == "📖 突發案件與處置知識庫":
     st.title("📖 突發案件與處置經驗庫")
     st.caption("供同仁遇到突發或特殊狀況時快速檢索處理流程，無需重複詢問。")
     
-    # 讀取現有案件資料
     try:
         res = supabase.table("cases").select("*").order("created_at", desc=True).execute()
         cases = res.data
@@ -65,6 +64,7 @@ if menu_choice == "📖 突發案件與處置知識庫":
                 if q in str(c.get("title", "")).lower() 
                 or q in str(c.get("problem", "")).lower()
                 or q in str(c.get("solution", "")).lower()
+                or q in str(c.get("result", "")).lower()
                 or q in str(c.get("details", "")).lower()
                 or q in str(c.get("created_by", "")).lower()
             ]
@@ -76,10 +76,8 @@ if menu_choice == "📖 突發案件與處置知識庫":
                 cid = case["id"]
                 ctitle = case.get("title", "無主旨")
                 c_created_by = case.get("created_by") or "未具名"
-                
-                # 兼容不同命名：優先抓 problem / solution / details
                 c_problem = case.get("problem", "") or ""
-                c_solution = case.get("solution", "") or case.get("details", "") or ""
+                c_solution = case.get("solution", "") or case.get("result", "") or case.get("details", "") or ""
                 ctime = case.get("created_at", "")[:16].replace("T", " ") if case.get("created_at") else ""
 
                 with st.expander(f"📌 {ctitle}（建檔人：{c_created_by} ｜ {ctime}）"):
@@ -87,7 +85,7 @@ if menu_choice == "📖 突發案件與處置知識庫":
                         st.markdown("**❓ 遇到問題 / 狀況描述：**")
                         st.write(c_problem)
                     
-                    st.markdown("**💡 處理方式 / 處置流程：**")
+                    st.markdown("**💡 具體處理方式 / 處置 SOP：**")
                     st.info(c_solution if c_solution else "無記錄處置細節")
                     
                     st.markdown("---")
@@ -97,7 +95,7 @@ if menu_choice == "📖 突發案件與處置知識庫":
                             with st.form(f"edit_case_{cid}"):
                                 edit_title = st.text_input("狀況標題", value=ctitle)
                                 edit_created_by = st.text_input("建檔人", value=c_created_by)
-                                edit_problem = st.text_area("遇到狀況描述", value=c_problem, height=90)
+                                edit_problem = st.text_area("狀況描述", value=c_problem, height=90)
                                 edit_solution = st.text_area("處理方式 / SOP", value=c_solution, height=150)
                                 if st.form_submit_button("儲存修改"):
                                     up_data = {
@@ -105,6 +103,7 @@ if menu_choice == "📖 突發案件與處置知識庫":
                                         "created_by": edit_created_by.strip(),
                                         "problem": edit_problem.strip(),
                                         "solution": edit_solution.strip(),
+                                        "result": edit_solution.strip(),
                                         "details": edit_solution.strip()
                                     }
                                     supabase.table("cases").update(up_data).eq("id", cid).execute()
@@ -138,13 +137,14 @@ if menu_choice == "📖 突發案件與處置知識庫":
                     st.warning("請填寫具體處理方式！")
                 else:
                     try:
-                        # 確保 problem 欄位絕對不為空（若選填未填，自動以標題代入，滿足 not-null 要求）
                         valid_problem = problem.strip() if problem.strip() else title.strip()
                         
+                        # 同時寫入 solution、result 與 details，徹底滿足所有 not-null 限制
                         payload = {
                             "title": title.strip(),
                             "problem": valid_problem,
                             "solution": solution.strip(),
+                            "result": solution.strip(),
                             "details": solution.strip(),
                             "created_by": created_by.strip()
                         }
