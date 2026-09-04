@@ -6,13 +6,13 @@ from supabase import create_client, Client
 
 # 設定網頁標題與排版
 st.set_page_config(
-    page_title="智慧案件與移工服務管理系統",
+    page_title="雙功能管理系統",
     page_icon="📋",
     layout="wide"
 )
 
 # -------------------------------------------------------------
-# 1. 資料庫安全連線 (Supabase)
+# 1. 資料庫連線 (Supabase)
 # -------------------------------------------------------------
 @st.cache_resource
 def get_supabase_client() -> Client:
@@ -27,56 +27,99 @@ except Exception as e:
     st.stop()
 
 # -------------------------------------------------------------
-# 2. 側邊欄選單（分頁切換，互不干擾）
+# 2. 側邊欄導航 (獨立分頁)
 # -------------------------------------------------------------
-st.sidebar.title("📌 系統選單")
+st.sidebar.title("📌 功能選單")
 menu_choice = st.sidebar.radio(
-    "請選擇功能模組：",
-    ["📂 案件追蹤管理", "🗓️ 移工雙月服務週期排程"]
+    "請選擇要操作的系統：",
+    ["案件智慧追蹤系統", "移工雙月服務週期排程"]
 )
 
 # =============================================================
-# 功能一：案件追蹤管理（包含建檔人、新增、編輯、刪除）
+# 功能分頁 A：案件智慧追蹤系統（完全還原本來的卡片式、就地編輯與刪除，僅加建檔人）
 # =============================================================
-if menu_choice == "📂 案件追蹤管理":
-    st.title("📂 案件追蹤管理系統")
+if menu_choice == "案件智慧追蹤系統":
+    st.title("📂 案件智慧追蹤系統")
     
+    # 讀取現有案件資料
     try:
         res = supabase.table("cases").select("*").order("created_at", desc=True).execute()
-        cases_data = res.data
+        cases = res.data
     except Exception as e:
-        cases_data = []
+        st.error(f"讀取案件失敗: {e}")
+        cases = []
 
-    tab1, tab2, tab3 = st.tabs(["📋 案件列表與查詢", "➕ 新增案件紀錄", "✏️ 編輯 / 刪除案件"])
+    # 原本的兩個頁籤
+    tab1, tab2 = st.tabs(["📋 案件列表與查詢", "➕ 新增案件紀錄"])
     
-    # ---------------- 1. 列表與查詢 ----------------
     with tab1:
-        st.subheader("案件總覽清單")
-        if cases_data:
-            df_cases = pd.DataFrame(cases_data)
+        st.subheader("案件列表")
+        
+        # 搜尋與篩選列
+        col_s1, col_s2 = st.columns([2, 1])
+        with col_s1:
+            search_query = st.text_input("🔍 搜尋關鍵字（標題、建檔人、承辦人或內容）：")
+        with col_s2:
+            status_filter = st.selectbox("狀態篩選：", ["全部", "進行中", "已完成", "列管追蹤", "已結案"])
             
-            rename_dict = {
-                "id": "編號",
-                "title": "案件標題",
-                "category": "類別",
-                "status": "處理狀態",
-                "created_by": "建檔人",
-                "handled_by": "承辦人",
-                "details": "詳細說明與處置",
-                "created_at": "建檔時間"
-            }
-            cols_to_display = [c for c in ["id", "title", "category", "status", "created_by", "handled_by", "details", "created_at"] if c in df_cases.columns]
-            df_show = df_cases[cols_to_display].rename(columns=rename_dict)
-            
-            search_query = st.text_input("🔍 搜尋案件標題、建檔人、承辦人或關鍵字：")
-            if search_query:
-                mask = df_show.astype(str).apply(lambda row: row.str.contains(search_query, case=False).any(), axis=1)
-                df_show = df_show[mask]
-            st.dataframe(df_show, use_container_width=True)
+        filtered_cases = cases
+        if status_filter != "全部":
+            filtered_cases = [c for c in filtered_cases if c.get("status") == status_filter]
+        if search_query.strip():
+            q = search_query.strip().lower()
+            filtered_cases = [
+                c for c in filtered_cases 
+                if q in str(c.get("title", "")).lower() 
+                or q in str(c.get("details", "")).lower() 
+                or q in str(c.get("handled_by", "")).lower()
+                or q in str(c.get("created_by", "")).lower()
+            ]
+
+        st.write(f"共找到 **{len(filtered_cases)}** 筆案件")
+
+        # 逐筆呈現案件（原本的卡片 / 展開式設計）
+        if filtered_cases:
+            for case in filtered_cases:
+                cid = case["id"]
+                ctitle = case.get("title", "未命名案件")
+                cstatus = case.get("status", "進行中")
+                ccat = case.get("category", "日常申報")
+                c_created_by = case.get("created_by") or "未填寫"
+                c_handled_by = case.get("handled_by") or "未指派"
+                cdetails = case.get("details", "") or "無詳細紀錄"
+                ctime = case.get("created_at", "")[:16].replace("T", " ") if case.get("created_at") else ""
+
+                # 展開式卡片
+                with st.expander(f"【{cstatus}】{ctitle} （類別：{ccat} ｜ 建檔人：{c_created_by}）"):
+                    c_col1, c_col2 = st.columns([3, 1])
+                    with c_col1:
+                        st.markdown(f"**詳細內容 / 處置紀錄：**")
+                        st.write(cdetails)
+                        st.caption(f"🕒 建檔時間：{ctime} ｜ 👤 負責承辦人：{c_handled_by} ｜ ✍️ 建檔人：{c_created_by}")
+                    
+                    with c_col2:
+                        st.markdown("**⚙️ 快速操作**")
+                        # 就地快速更改進度狀態
+                        new_stat = st.selectbox(
+                            "變更狀態", 
+                            ["進行中", "已完成", "列管追蹤", "已結案"], 
+                            index=["進行中", "已完成", "列管追蹤", "已結案"].index(cstatus) if cstatus in ["進行中", "已完成", "列管追蹤", "已結案"] else 0,
+                            key=f"status_sel_{cid}"
+                        )
+                        if new_stat != cstatus:
+                            if st.button("更新狀態", key=f"up_btn_{cid}"):
+                                supabase.table("cases").update({"status": new_stat}).eq("id", cid).execute()
+                                st.success("狀態已更新！")
+                                st.rerun()
+
+                        # 就地刪除案件
+                        if st.button("🗑️ 刪除案件", key=f"del_btn_{cid}", type="secondary"):
+                            supabase.table("cases").delete().eq("id", cid).execute()
+                            st.warning(f"案件已刪除！")
+                            st.rerun()
         else:
-            st.info("目前尚無案件紀錄。")
-            
-    # ---------------- 2. 新增案件 ----------------
+            st.info("目前沒有符合條件的案件。")
+
     with tab2:
         st.subheader("新增案件")
         with st.form("new_case_form", clear_on_submit=True):
@@ -86,8 +129,8 @@ if menu_choice == "📂 案件追蹤管理":
                 category = st.selectbox("案件類別", ["日常申報", "突發緊急", "例行健檢", "證件申辦", "轉出承接", "其他"])
                 status = st.selectbox("進度狀態", ["進行中", "已完成", "列管追蹤", "已結案"])
             with col2:
-                created_by = st.text_input("建檔人 *", placeholder="請輸入填表同仁姓名")
-                handled_by = st.text_input("負責承辦人", placeholder="若尚未指派可先空白")
+                created_by = st.text_input("建檔人 *", placeholder="請填寫您的姓名")
+                handled_by = st.text_input("負責承辦人", placeholder="若尚未指派可先留空")
                 details = st.text_area("詳細內容 / 處置紀錄", height=110)
             
             submitted = st.form_submit_button("確認新增案件")
@@ -112,78 +155,10 @@ if menu_choice == "📂 案件追蹤管理":
                     except Exception as err:
                         st.error(f"新增失敗: {err}")
 
-    # ---------------- 3. 編輯與刪除案件 ----------------
-    with tab3:
-        st.subheader("✏️ 編輯或刪除既有案件")
-        if cases_data:
-            case_options = {f"編號 {c['id']} - {c.get('title', '無標題')}": c for c in cases_data}
-            selected_label = st.selectbox("請選擇要編輯或刪除的案件：", list(case_options.keys()))
-            target_case = case_options[selected_label]
-            target_id = target_case["id"]
-
-            col_edit, col_del = st.columns([2.5, 1])
-
-            with col_edit:
-                st.markdown("#### 📝 修改案件資料")
-                with st.form(f"edit_form_{target_id}"):
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        e_title = st.text_input("案件標題", value=target_case.get("title", ""))
-                        categories = ["日常申報", "突發緊急", "例行健檢", "證件申辦", "轉出承接", "其他"]
-                        cur_cat = target_case.get("category", "日常申報")
-                        cat_idx = categories.index(cur_cat) if cur_cat in categories else 0
-                        e_category = st.selectbox("類別", categories, index=cat_idx)
-                        
-                        statuses = ["進行中", "已完成", "列管追蹤", "已結案"]
-                        cur_stat = target_case.get("status", "進行中")
-                        stat_idx = statuses.index(cur_stat) if cur_stat in statuses else 0
-                        e_status = st.selectbox("進度狀態", statuses, index=stat_idx)
-
-                    with c2:
-                        e_created_by = st.text_input("建檔人", value=target_case.get("created_by", "") or "")
-                        e_handled_by = st.text_input("負責承辦人", value=target_case.get("handled_by", "") or "")
-                        e_details = st.text_area("詳細內容 / 處置紀錄", value=target_case.get("details", "") or "", height=110)
-
-                    save_edit_btn = st.form_submit_button("💾 儲存修改")
-                    if save_edit_btn:
-                        try:
-                            update_data = {
-                                "title": e_title.strip(),
-                                "category": e_category,
-                                "status": e_status,
-                                "created_by": e_created_by.strip(),
-                                "handled_by": e_handled_by.strip(),
-                                "details": e_details.strip()
-                            }
-                            supabase.table("cases").update(update_data).eq("id", target_id).execute()
-                            st.success(f"✅ 案件編號 {target_id} 修改完成！")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"更新失敗: {e}")
-
-            with col_del:
-                st.markdown("#### 🗑️ 刪除案件")
-                st.write(f"目前選取：**編號 {target_id}**")
-                st.warning("⚠️ 刪除後資料將無法復原，請謹慎操作。")
-                
-                confirm_delete = st.checkbox("我確定要刪除這筆案件", key=f"del_confirm_{target_id}")
-                if st.button("🚨 執行刪除", type="primary", key=f"del_btn_{target_id}"):
-                    if confirm_delete:
-                        try:
-                            supabase.table("cases").delete().eq("id", target_id).execute()
-                            st.success(f"🗑️ 案件編號 {target_id} 已成功刪除！")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"刪除失敗: {e}")
-                    else:
-                        st.error("請先勾選上方的確認框才能執行刪除！")
-        else:
-            st.info("目前尚無案件可供編輯或刪除。")
-
 # =============================================================
-# 功能二：移工雙月服務週期排程
+# 功能分頁 B：移工雙月服務週期排程（獨立運行）
 # =============================================================
-elif menu_choice == "🗓️ 移工雙月服務週期排程":
+elif menu_choice == "移工雙月服務週期排程":
     st.title("🗓️ 移工雙月服務週期排程與追蹤")
     st.caption("依據入境日或承接日起算，自動推算 3 年（18 期）訪視排程。支援失聯、轉出動態變更與隨時恢復機制。")
 
@@ -194,13 +169,13 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
         "➕ 單筆手動建立"
     ])
 
-    # ---------------- 2-1. 訪視進度追蹤與主管勾選 ----------------
+    # B-1. 訪視進度追蹤與勾選
     with sub_tab1:
-        st.subheader("訪視排程總覽")
+        st.subheader("訪視排程清單")
         try:
             records = supabase.table("worker_service_schedules").select("*").order("target_date", desc=False).execute().data
         except Exception as e:
-            st.error(f"讀取排程發生錯誤: {e}")
+            st.error(f"讀取排程時發生錯誤: {e}")
             records = []
 
         if records:
@@ -215,9 +190,9 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             with col_f1:
                 status_filter = st.multiselect("訪視狀態", options=["待訪視", "已完成", "暫緩", "已終止(免訪視)"], default=["待訪視"])
             with col_f2:
-                emp_filter = st.multiselect("在職狀態", options=["在職中", "失聯(逃跑)", "已轉出", "提前離境", "解約/終止"], default=["在職中"])
+                emp_filter = st.multiselect("移工在職狀態", options=["在職中", "失聯(逃跑)", "已轉出", "提前離境", "解約/終止"], default=["在職中"])
             with col_f3:
-                keyword = st.text_input("搜尋移工姓名 / 雇主 / 工號：")
+                keyword = st.text_input("搜尋姓名 / 雇主 / 工號：")
             with col_f4:
                 time_range = st.selectbox("到期篩選", ["全部", "即日起 30 天內待訪視", "即日起 60 天內待訪視", "已逾期待訪視"])
 
@@ -286,7 +261,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
         else:
             st.info("目前尚無排程資料，請至「批次匯入」或「單筆手動建立」新增移工！")
 
-    # ---------------- 2-2. 移工動態變更 / 隨時恢復 ----------------
+    # B-2. 移工動態變更 / 隨時恢復
     with sub_tab2:
         st.subheader("⚠️ 移工動態變更（失聯 / 轉出 / 離境 / 隨時恢復在職）")
         st.info("💡 彈性機制：若移工發生狀況，可一鍵將未來尚未訪視的期別改為「已終止(免訪視)」；若狀況解除（例如尋回投案、取消轉出），可隨時切回「在職中」恢復排程！過去已經完成的訪視紀錄絕對不會受影響。")
@@ -344,7 +319,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
         else:
             st.info("目前尚無移工資料可供變更。")
 
-    # ---------------- 2-3. 批次匯入名單 ----------------
+    # B-3. 批次匯入名單
     with sub_tab3:
         st.subheader("批次匯入移工名單 (Excel / CSV)")
         template_df = pd.DataFrame({
@@ -413,7 +388,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             except Exception as e:
                 st.error(f"檔案解析失敗: {e}")
 
-    # ---------------- 2-4. 單筆手動建立 ----------------
+    # B-4. 單筆手動建立
     with sub_tab4:
         st.subheader("手動建立單筆移工排程")
         with st.form("manual_worker_form", clear_on_submit=True):
