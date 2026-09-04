@@ -4,7 +4,7 @@ from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from supabase import create_client, Client
 
-# 設定網頁標題與寬版
+# 設定網頁標題與寬版排版
 st.set_page_config(
     page_title="業務管理與服務追蹤系統",
     page_icon="📋",
@@ -156,11 +156,11 @@ if menu_choice == "📖 突發案件與處置知識庫":
                         st.error(f"新增失敗: {err}")
 
 # =============================================================
-# 功能分頁 B：移工雙月服務週期排程（一人一行 + 直接打勾）
+# 功能分頁 B：移工雙月服務週期排程（支援編輯移工基本資料）
 # =============================================================
 elif menu_choice == "🗓️ 移工雙月服務週期排程":
     st.title("🗓️ 移工雙月服務週期排程")
-    st.caption("一人一行管理模式：一覽移工目前在職動態與最新訪視進度，展開即可直接勾選。")
+    st.caption("一人一行管理模式：一覽移工目前在職動態與最新訪視進度，展開即可直接勾選或編輯移工資料。")
 
     sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
         "👥 移工服務名冊與直接勾選", 
@@ -169,7 +169,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
         "➕ 單筆手動建立"
     ])
 
-    # ---------------- 2-1. 一人一行 + 點選打勾 ----------------
+    # ---------------- 2-1. 一人一行 + 點選打勾 + 修改移工資料 ----------------
     with sub_tab1:
         st.subheader("移工清單總覽")
         try:
@@ -189,13 +189,24 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 df["notes"] = ""
             if "visit_date" not in df.columns:
                 df["visit_date"] = None
+            if "employer_name" not in df.columns:
+                df["employer_name"] = ""
+            if "worker_id" not in df.columns:
+                df["worker_id"] = ""
 
-            # 彙總一人一行主列表
             today = date.today()
-            grouped = df.groupby(["worker_name", "employer_name", "worker_id", "start_date", "employment_status", "status_reason"], dropna=False)
+            # 依移工姓名分組（以姓名為主鍵辨識同一位移工）
+            grouped = df.groupby(["worker_name"], dropna=False)
 
             summary_list = []
-            for (w_name, emp, wid, s_date, emp_stat, s_reason), g in grouped:
+            for w_name, g in grouped:
+                first_row = g.iloc[0]
+                emp = first_row.get("employer_name", "") or ""
+                wid = first_row.get("worker_id", "") or ""
+                s_date = first_row.get("start_date", "")
+                emp_stat = first_row.get("employment_status", "在職中") or "在職中"
+                s_reason = first_row.get("status_reason", "") or ""
+
                 total_p = len(g)
                 done_p = len(g[g["status"] == "已完成"])
                 
@@ -213,7 +224,8 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 summary_list.append({
                     "移工姓名": w_name,
                     "雇主名稱": emp if emp else "-",
-                    "在職狀態": emp_stat if emp_stat else "在職中",
+                    "工號": wid,
+                    "在職狀態": emp_stat,
                     "進度": f"{done_p} / {total_p}",
                     "下次預定訪視": next_info,
                     "是否逾期": is_overdue,
@@ -251,6 +263,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
             for _, item in flt.iterrows():
                 w_name = item["移工姓名"]
                 emp = item["雇主名稱"]
+                wid = item["工號"]
                 emp_stat = item["在職狀態"]
                 prog = item["進度"]
                 nxt = item["下次預定訪視"]
@@ -261,8 +274,37 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                 card_title = f"{alert_prefix}{w_name} ｜ 雇主：{emp} ｜ 狀態：{emp_stat} ｜ 進度：{prog} ｜ 下次訪視：{nxt}"
 
                 with st.expander(card_title):
+                    # 頂部操作工具：編輯移工資料 & 刪除移工
+                    col_top1, col_top2 = st.columns([3, 1])
+                    with col_top1:
+                        with st.popover(f"✏️ 編輯【{w_name}】基本資料 (補填雇主/改名)"):
+                            with st.form(f"edit_worker_info_{w_name}"):
+                                new_w_name = st.text_input("移工姓名", value=w_name)
+                                new_emp_name = st.text_input("雇主名稱", value="" if emp == "-" else emp)
+                                new_wid = st.text_input("工號 / 護照號", value=wid)
+                                if st.form_submit_button("儲存移工基本資料"):
+                                    if not new_w_name.strip():
+                                        st.warning("移工姓名不能為空！")
+                                    else:
+                                        supabase.table("worker_service_schedules").update({
+                                            "worker_name": new_w_name.strip(),
+                                            "employer_name": new_emp_name.strip(),
+                                            "worker_id": new_wid.strip()
+                                        }).eq("worker_name", w_name).execute()
+                                        st.success("基本資料已更新！")
+                                        st.rerun()
+
+                    with col_top2:
+                        with st.popover("🗑️ 刪除此移工"):
+                            st.write(f"確定要將 **{w_name}** 及所有訪視排程全部刪除嗎？")
+                            if st.button("確認刪除", key=f"del_worker_{w_name}", type="primary"):
+                                supabase.table("worker_service_schedules").delete().eq("worker_name", w_name).execute()
+                                st.warning(f"已刪除 {w_name}！")
+                                st.rerun()
+
+                    st.markdown("---")
                     st.info("💡 操作方式：在下方表格第一欄直接勾選「是否已完成」，完成後點選「儲存訪視勾選變更」即可存檔。")
-                    
+
                     edit_df = pd.DataFrame({
                         "id": g_df["id"],
                         "已完成訪視": g_df["status"] == "已完成",
@@ -289,7 +331,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                         disabled=["期別", "預定訪視日"],
                         hide_index=True,
                         use_container_width=True,
-                        key=f"editor_{w_name}_{emp}"
+                        key=f"editor_{w_name}"
                     )
 
                     diff = edited_result["已完成訪視"] != edit_df["已完成訪視"]
@@ -297,7 +339,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
                     diff_dates = edited_result["實際完成日"] != edit_df["實際完成日"]
 
                     if diff.any() or diff_notes.any() or diff_dates.any():
-                        if st.button("💾 儲存訪視勾選變更", type="primary", key=f"btn_save_{w_name}_{emp}"):
+                        if st.button("💾 儲存訪視勾選變更", type="primary", key=f"btn_save_{w_name}"):
                             with st.spinner("資料儲存中..."):
                                 for idx, row in edited_result.iterrows():
                                     sched_id = int(row["id"])
@@ -332,7 +374,7 @@ elif menu_choice == "🗓️ 移工雙月服務週期排程":
         try:
             worker_list_res = supabase.table("worker_service_schedules").select("worker_name, employer_name, worker_id, employment_status, status_reason").execute().data
             if worker_list_res:
-                workers_df = pd.DataFrame(worker_list_res).drop_duplicates(subset=["worker_name", "employer_name"])
+                workers_df = pd.DataFrame(worker_list_res).drop_duplicates(subset=["worker_name"])
             else:
                 workers_df = pd.DataFrame()
         except:
