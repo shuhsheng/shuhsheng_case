@@ -4,571 +4,416 @@ from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from supabase import create_client, Client
 
-# 設定網頁標題與排版
+# ==========================================
+# 1. 頁面基礎設定與精緻深色科技主題 CSS
+# ==========================================
 st.set_page_config(
     page_title="業務管理與服務追蹤系統",
-    page_icon="📋",
-    layout="wide"
-)
-st.set_page_config(
-    page_title="業務營運管理儀表板",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded"
 )
 
-# 注入深色科技感主題樣式
-st.markdown(
-    """
+# 注入自訂現代化深色 UI 樣式
+st.markdown("""
 <style>
+    /* 全域深色背景與文字 */
     .stApp {
-        background-color: #0b0f19;
-        color: #f1f5f9;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #0b0f19 !important;
+        color: #f1f5f9 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    /* KPI 指標卡片 */
+    
+    /* 側邊欄深色統一 */
+    [data-testid="stSidebar"] {
+        background-color: #0f172a !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #cbd5e1 !important;
+    }
+    
+    /* 輸入框美化 (消除死白長條) */
+    div[data-baseweb="input"] {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important;
+    }
+    div[data-baseweb="input"]:focus-within {
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 0 1px #38bdf8 !important;
+    }
+    input.st-bc, div[data-baseweb="input"] input {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+    textarea {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* 下拉選單 Selectbox */
+    div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+    }
+    
+    /* 分頁標籤 Tabs */
+    button[data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-weight: 500 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #38bdf8 !important;
+        border-bottom-color: #38bdf8 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* KPI 統計卡片 */
+    .kpi-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
     .kpi-card {
         background: #111827;
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 1rem;
+        border-radius: 12px;
+        padding: 1.1rem 1.25rem;
+        box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.4);
     }
     .kpi-title {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: #94a3b8;
-        margin-bottom: 0.4rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
     }
     .kpi-value {
-        font-size: 1.85rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: #f8fafc;
+        line-height: 1.2;
     }
     .kpi-badge {
         display: inline-block;
-        font-size: 0.75rem;
-        padding: 0.2rem 0.55rem;
+        font-size: 0.72rem;
+        padding: 0.2rem 0.5rem;
         border-radius: 9999px;
         font-weight: 600;
         margin-top: 0.5rem;
     }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
     .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
     .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    
+    /* 知識庫案例卡片 */
+    .sop-card {
+        background: #111827;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #38bdf8;
+    }
+    .sop-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: #f8fafc;
+        margin-bottom: 0.4rem;
+    }
+    .sop-category {
+        display: inline-block;
+        background: #1e293b;
+        color: #94a3b8;
+        padding: 0.15rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .sop-content {
+        color: #cbd5e1;
+        font-size: 0.925rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    /* Streamlit 原生提示框美化 */
+    .stAlert {
+        background-color: #1e293b !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #cbd5e1 !important;
+        border-radius: 10px !important;
+    }
 </style>
-""",
-    unsafe_allow_html=True,
-)
-# -------------------------------------------------------------
-# 1. 資料庫連線 (Supabase)
-# -------------------------------------------------------------
+""", unsafe_allow_html=True)
+
+
+# ==========================================
+# 2. 資料庫連線 (Supabase)
+# ==========================================
 @st.cache_resource
 def get_supabase_client() -> Client:
-    supabase_url = st.secrets["SUPABASE_URL"]
-    supabase_key = st.secrets["SUPABASE_KEY"]
-    return create_client(supabase_url, supabase_key)
-
-try:
-    supabase = get_supabase_client()
-except Exception as e:
-    st.error(f"資料庫連線失敗，請檢查 Streamlit Secrets 設定: {e}")
-    st.stop()
-
-# -------------------------------------------------------------
-# 2. 側邊欄選單
-# -------------------------------------------------------------
-st.sidebar.title("📌 系統選單")
-menu_choice = st.sidebar.radio(
-    "請選擇作業功能：",
-    ["📖 突發案件與處置知識庫", "🗓️ 移工雙月服務週期排程"]
-)
-
-# =============================================================
-# 功能分頁 A：突發案件與處置知識庫
-# =============================================================
-if menu_choice == "📖 突發案件與處置知識庫":
-    st.title("📖 突發案件處置知識庫")
-    st.caption("供同仁遇到突發或特殊狀況時快速檢索標準處理作業流程，免去重複詢問。")
-    
     try:
-        res = supabase.table("cases").select("*").order("created_at", desc=True).execute()
-        cases = res.data
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
     except Exception as e:
-        st.error(f"讀取資料庫失敗: {e}")
-        cases = []
+        st.error(f"無法讀取 Supabase 連線憑證，請檢查 Streamlit Secrets 設定：{e}")
+        return None
 
-    tab1, tab2 = st.tabs(["🔍 查詢處置經驗與 SOP", "➕ 建立新案例紀錄"])
+supabase = get_supabase_client()
+
+
+# ==========================================
+# 3. 側邊欄導航
+# ==========================================
+with st.sidebar:
+    st.markdown("### 📌 系統選單")
+    st.markdown("<p style='font-size:0.85rem; color:#94a3b8;'>業務管理與週期服務作業流程</p>", unsafe_allow_html=True)
     
-    with tab1:
-        st.subheader("案例檢索")
-        search_query = st.text_input("🔍 輸入關鍵字查詢（如：健檢不合格、失聯、急診、證件補發...）：")
+    menu = st.radio(
+        "請選擇作業功能：",
+        ["📖 突發案件與處置知識庫", "📅 移工雙月服務週期排程"],
+        index=0
+    )
+    
+    st.markdown("---")
+    st.markdown("<div style='font-size:0.75rem; color:#64748b;'>資料庫狀態：連線中 (Supabase)<br>雲端伺服器正常運作</div>", unsafe_allow_html=True)
+
+
+# ==========================================
+# 4. 功能一：突發案件與處置知識庫 (cases)
+# ==========================================
+if menu == "📖 突發案件與處置知識庫":
+    st.markdown("""
+        <div style="margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700;">📖 突發案件處置知識庫</h2>
+            <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
+                供同仁遇到突發或特殊狀況時快速檢索標準處理作業流程 (SOP)，免去重複詢問。
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 讀取 cases 資料
+    cases_data = []
+    if supabase:
+        try:
+            res = supabase.table("cases").select("*").order("created_at", desc=True).execute()
+            cases_data = res.data
+        except Exception as e:
+            st.error(f"讀取資料庫失敗: {e}")
+
+    # 頂部 KPI 卡片
+    total_cases = len(cases_data)
+    cat_count = len(set([c.get("category", "") for c in cases_data if c.get("category")]))
+    
+    st.markdown(f"""
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">收錄案例總數</div>
+            <div class="kpi-value">{total_cases} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">筆</span></div>
+            <span class="kpi-badge badge-blue">處置 SOP 資料庫</span>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">涵蓋類別</div>
+            <div class="kpi-value">{cat_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">大類</span></div>
+            <span class="kpi-badge badge-green">完整分類歸檔</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_search, tab_add = st.tabs(["🔍 查詢處置經驗與 SOP", "➕ 建立新案例紀錄"])
+    
+    with tab_search:
+        col_search, col_cat = st.columns([3, 1])
+        with col_search:
+            search_query = st.text_input("🔍 輸入關鍵字查詢 (如：健檢不合格、失聯、急診、證件補發...)", placeholder="輸入搜尋關鍵字...")
+        with col_cat:
+            all_categories = ["全部分類"] + sorted(list(set([c.get("category", "其他") for c in cases_data if c.get("category")])))
+            selected_cat = st.selectbox("分類篩選", all_categories)
         
-        filtered_cases = cases
-        if search_query.strip():
-            q = search_query.strip().lower()
+        # 篩選邏輯
+        filtered_cases = cases_data
+        if selected_cat != "全部分類":
+            filtered_cases = [c for c in filtered_cases if c.get("category") == selected_cat]
+        if search_query:
             filtered_cases = [
                 c for c in filtered_cases 
-                if q in str(c.get("title", "")).lower() 
-                or q in str(c.get("problem", "")).lower()
-                or q in str(c.get("solution", "")).lower()
-                or q in str(c.get("result", "")).lower()
-                or q in str(c.get("details", "")).lower()
-                or q in str(c.get("created_by", "")).lower()
+                if search_query.lower() in str(c.get("title", "")).lower() 
+                or search_query.lower() in str(c.get("solution", "")).lower()
+                or search_query.lower() in str(c.get("description", "")).lower()
             ]
-
-        st.write(f"共找到 **{len(filtered_cases)}** 筆相關案例紀錄")
-
+        
+        st.markdown(f"<div style='margin: 0.5rem 0 1rem 0; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆相關案例紀錄</div>", unsafe_allow_html=True)
+        
         if filtered_cases:
-            for case in filtered_cases:
-                cid = case["id"]
-                ctitle = case.get("title", "無主旨")
-                c_created_by = case.get("created_by") or "未具名"
-                c_problem = case.get("problem", "") or ""
-                c_solution = case.get("solution", "") or case.get("result", "") or case.get("details", "") or ""
-                ctime = case.get("created_at", "")[:16].replace("T", " ") if case.get("created_at") else ""
-
-                with st.expander(f"{ctitle} ｜ 建檔人：{c_created_by} ｜ 時間：{ctime}"):
-                    if c_problem and c_problem != ctitle:
-                        st.markdown("**【狀況描述】**")
-                        st.write(c_problem)
-                    
-                    st.markdown("**【具體處理方式 / 處置流程】**")
-                    st.info(c_solution if c_solution else "無記錄處置細節")
-                    
-                    st.markdown("---")
-                    col_act1, col_act2 = st.columns([3, 1])
-                    with col_act1:
-                        with st.popover("✏️ 修改這筆內容"):
-                            with st.form(f"edit_case_{cid}"):
-                                edit_title = st.text_input("狀況標題", value=ctitle)
-                                edit_created_by = st.text_input("建檔人", value=c_created_by)
-                                edit_problem = st.text_area("狀況描述", value=c_problem, height=90)
-                                edit_solution = st.text_area("處理方式 / SOP", value=c_solution, height=150)
-                                if st.form_submit_button("儲存修改"):
-                                    up_data = {
-                                        "title": edit_title.strip(),
-                                        "created_by": edit_created_by.strip(),
-                                        "problem": edit_problem.strip(),
-                                        "solution": edit_solution.strip(),
-                                        "result": edit_solution.strip(),
-                                        "details": edit_solution.strip()
-                                    }
-                                    supabase.table("cases").update(up_data).eq("id", cid).execute()
-                                    st.success("修改已儲存！")
-                                    st.rerun()
-
-                    with col_act2:
-                        if st.button("🗑️ 刪除此案例", key=f"del_{cid}", type="secondary"):
-                            supabase.table("cases").delete().eq("id", cid).execute()
-                            st.warning("案例已刪除！")
-                            st.rerun()
+            for item in filtered_cases:
+                title = item.get("title", "未命名案件")
+                cat = item.get("category", "其他")
+                sol = item.get("solution") or item.get("description") or "尚未提供具體說明"
+                created = str(item.get("created_at", ""))[:10]
+                
+                st.markdown(f"""
+                <div class="sop-card">
+                    <div class="sop-title">{title}</div>
+                    <span class="sop-category">{cat}</span>
+                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">紀錄日期: {created}</span>
+                    <div class="sop-content">{sol}</div>
+                </div>
+                """, unsafe_allow_html=True)
         else:
-            st.info("查無相關案例。如果解決了新狀況，歡迎點上方分頁建立紀錄！")
+            st.info("查無相關案例。如果解決了新狀況，歡迎點擊上方「建立新案例紀錄」頁籤進行建檔！")
 
-    with tab2:
-        st.subheader("新增案例處置經驗")
-        with st.form("new_case_knowledge_form", clear_on_submit=True):
-            title = st.text_input("狀況標題 / 發生問題 *", placeholder="例：移工居留證過期如何急件補辦、健檢胸部X光疑似異常處理流程")
-            created_by = st.text_input("建檔人 *", placeholder="請填寫您的姓名")
-            problem = st.text_area("問題狀況補充說明 (選填)", placeholder="若標題已足夠清楚可留空，或補充案件當下的具體細節...")
-            solution = st.text_area("具體處理方式 / 處置 SOP / 注意事項 *", height=180, placeholder="請詳細記錄處理步驟、聯絡窗口、應備文件，方便日後同仁直接照做...")
+    with tab_add:
+        st.markdown("#### 建立新的突發案例 SOP")
+        with st.form("add_case_form", clear_on_submit=True):
+            new_title = st.text_input("案例名稱 / 狀況主旨*", placeholder="例如：印尼籍移工初次健檢異常複檢流程")
+            new_category = st.text_input("分類標籤*", placeholder="例如：健康檢查、入出國管理、勞資爭議、急診就醫")
+            new_solution = st.text_area("處置 SOP 流程與經驗說明*", placeholder="請詳細條列處理步驟、法規依據、通報對象或配合單位聯絡方式...", height=160)
             
-            submitted = st.form_submit_button("確認建立此案例")
+            submitted = st.form_submit_button("儲存新案例至雲端知識庫")
             if submitted:
-                if not title.strip():
-                    st.warning("請填寫狀況標題！")
-                elif not created_by.strip():
-                    st.warning("請填寫建檔人！")
-                elif not solution.strip():
-                    st.warning("請填寫具體處理方式！")
+                if not new_title or not new_solution:
+                    st.warning("請填寫完整的案例名稱與處置說明！")
                 else:
                     try:
-                        valid_problem = problem.strip() if problem.strip() else title.strip()
-                        now_str = datetime.now().isoformat()
-                        
                         payload = {
-                            "title": title.strip(),
-                            "problem": valid_problem,
-                            "solution": solution.strip(),
-                            "result": solution.strip(),
-                            "details": solution.strip(),
-                            "created_by": created_by.strip(),
-                            "created_at": now_str
+                            "title": new_title.strip(),
+                            "category": new_category.strip() if new_category else "其他",
+                            "solution": new_solution.strip()
                         }
                         supabase.table("cases").insert(payload).execute()
-                        st.success("✅ 案例新增成功！已納入同仁查詢庫。")
+                        st.success("✅ 案例已成功儲存至知識庫！")
                         st.rerun()
-                    except Exception as err:
-                        st.error(f"新增失敗: {err}")
+                    except Exception as e:
+                        st.error(f"儲存失敗：{e}")
 
-# =============================================================
-# 功能分頁 B：移工雙月服務週期排程（一人一行版）
-# =============================================================
-elif menu_choice == "🗓️ 移工雙月服務週期排程":
-    st.title("🗓️ 移工雙月服務週期排程")
-    st.caption("一人一行管理模式：一覽移工目前在職動態與最新訪視進度，展開即可直接勾選或編輯移工資料。")
 
-    sub_tab1, sub_tab2, sub_tab3, sub_tab4 = st.tabs([
-        "👥 移工服務名冊與直接勾選", 
-        "⚠️ 移工狀態動態管理",
-        "📤 批次匯入移工名單 (Excel/CSV)", 
-        "➕ 單筆手動建立"
-    ])
-
-    with sub_tab1:
-        st.subheader("移工清單總覽")
+# ==========================================
+# 5. 功能二：移工雙月服務週期排程 (worker_service_schedules)
+# ==========================================
+elif menu == "📅 移工雙月服務週期排程":
+    st.markdown("""
+        <div style="margin-bottom: 1.5rem;">
+            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700;">📅 移工雙月服務週期排程</h2>
+            <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
+                追蹤每兩個月一次的定期關懷訪視、法規申報與入廠服務排程。
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 讀取排程資料
+    schedule_data = []
+    if supabase:
         try:
-            records = supabase.table("worker_service_schedules").select("*").order("period_number", desc=False).execute().data
+            res = supabase.table("worker_service_schedules").select("*").order("next_service_date", desc=False).execute()
+            schedule_data = res.data
         except Exception as e:
-            st.error(f"讀取排程發生錯誤: {e}")
-            records = []
+            st.error(f"讀取資料庫失敗: {e}")
 
-        if records:
-            df = pd.DataFrame(records)
-            df["target_date"] = pd.to_datetime(df["target_date"]).dt.date
-            if "employment_status" not in df.columns:
-                df["employment_status"] = "在職中"
-            if "status_reason" not in df.columns:
-                df["status_reason"] = ""
-            if "notes" not in df.columns:
-                df["notes"] = ""
-            if "visit_date" not in df.columns:
-                df["visit_date"] = None
-            if "employer_name" not in df.columns:
-                df["employer_name"] = ""
-            if "worker_id" not in df.columns:
-                df["worker_id"] = ""
-
-            today = date.today()
-            # 確保按移工姓名以純字串分組
-            unique_workers = df["worker_name"].dropna().unique().tolist()
-
-            summary_list = []
-            for w_name in unique_workers:
-                g = df[df["worker_name"] == w_name].copy()
-                first_row = g.iloc[0]
-                emp = str(first_row.get("employer_name", "") or "").strip()
-                wid = str(first_row.get("worker_id", "") or "").strip()
-                s_date = first_row.get("start_date", "")
-                emp_stat = first_row.get("employment_status", "在職中") or "在職中"
-                s_reason = first_row.get("status_reason", "") or ""
-
-                total_p = len(g)
-                done_p = len(g[g["status"] == "已完成"])
-                
-                pending = g[g["status"] == "待訪視"].sort_values("target_date")
-                if not pending.empty:
-                    next_target = pending.iloc[0]["target_date"]
-                    next_period = pending.iloc[0]["period_number"]
-                    next_info = f"第 {next_period} 期 ({next_target})"
-                    is_overdue = next_target < today
-                else:
-                    next_target = None
-                    next_info = "全部期別皆已訪視"
-                    is_overdue = False
-
-                summary_list.append({
-                    "移工姓名": str(w_name).strip(),
-                    "雇主名稱": emp if emp else "-",
-                    "工號": wid,
-                    "在職狀態": emp_stat,
-                    "進度": f"{done_p} / {total_p}",
-                    "下次預定訪視": next_info,
-                    "是否逾期": is_overdue,
-                    "raw_next_date": next_target,
-                    "group_df": g
-                })
-
-            summary_df = pd.DataFrame(summary_list)
-
-            c_f1, c_f2, c_f3 = st.columns(3)
-            with c_f1:
-                stat_filter = st.multiselect("在職狀態篩選", options=["在職中", "失聯(逃跑)", "已轉出", "提前離境", "解約/終止"], default=["在職中"])
-            with c_f2:
-                kw = st.text_input("🔍 搜尋移工姓名 / 雇主：")
-            with c_f3:
-                time_flt = st.selectbox("訪視時程篩選", ["全部", "即日起 30 天內待訪視", "即日起 60 天內待訪視", "已有逾期待訪視"])
-
-            flt = summary_df.copy()
-            if stat_filter:
-                flt = flt[flt["在職狀態"].isin(stat_filter)]
-            if kw.strip():
-                flt = flt[flt["移工姓名"].str.contains(kw, case=False) | flt["雇主名稱"].str.contains(kw, case=False)]
-            
-            if time_flt == "即日起 30 天內待訪視":
-                flt = flt[flt["raw_next_date"].apply(lambda d: d is not None and today <= d <= today + relativedelta(days=30))]
-            elif time_flt == "即日起 60 天內待訪視":
-                flt = flt[flt["raw_next_date"].apply(lambda d: d is not None and today <= d <= today + relativedelta(days=60))]
-            elif time_flt == "已有逾期待訪視":
-                flt = flt[flt["是否逾期"] == True]
-
-            st.write(f"移工總數：共 **{len(flt)}** 位")
-
-            for idx, item in flt.iterrows():
-                w_name = item["移工姓名"]
-                emp = item["雇主名稱"]
-                wid = item["工號"]
-                emp_stat = item["在職狀態"]
-                prog = item["進度"]
-                nxt = item["下次預定訪視"]
-                is_ov = item["是否逾期"]
-                g_df = item["group_df"].sort_values("period_number").copy()
-
-                alert_prefix = "【逾期待訪】" if is_ov and emp_stat == "在職中" else ""
-                card_title = f"{alert_prefix}{w_name} ｜ 雇主：{emp} ｜ 狀態：{emp_stat} ｜ 進度：{prog} ｜ 下次訪視：{nxt}"
-
-                with st.expander(card_title):
-                    col_top1, col_top2 = st.columns([3, 1])
-                    with col_top1:
-                        with st.popover(f"✏️ 編輯【{w_name}】基本資料 (補填雇主/改名)"):
-                            with st.form(f"edit_worker_info_{idx}"):
-                                new_w_name = st.text_input("移工姓名", value=w_name)
-                                new_emp_name = st.text_input("雇主名稱", value="" if emp == "-" else emp)
-                                new_wid = st.text_input("工號 / 護照號", value=wid)
-                                if st.form_submit_button("儲存移工基本資料"):
-                                    if not new_w_name.strip():
-                                        st.warning("移工姓名不能為空！")
-                                    else:
-                                        # 依原移工姓名一次更新所有 18 筆排程
-                                        supabase.table("worker_service_schedules").update({
-                                            "worker_name": new_w_name.strip(),
-                                            "employer_name": new_emp_name.strip(),
-                                            "worker_id": new_wid.strip()
-                                        }).eq("worker_name", w_name).execute()
-                                        st.success("基本資料已更新！")
-                                        st.rerun()
-
-                    with col_top2:
-                        with st.popover("🗑️ 刪除此移工"):
-                            st.write(f"確定要將 **{w_name}** 及所有訪視排程全部刪除嗎？")
-                            if st.button("確認刪除", key=f"del_worker_{idx}", type="primary"):
-                                supabase.table("worker_service_schedules").delete().eq("worker_name", w_name).execute()
-                                st.warning(f"已刪除 {w_name}！")
-                                st.rerun()
-
-                    st.markdown("---")
-                    st.info("💡 操作方式：在下方表格第一欄直接勾選「是否已完成」，完成後點選「儲存訪視勾選變更」即可存檔。")
-
-                    edit_df = pd.DataFrame({
-                        "id": g_df["id"],
-                        "已完成訪視": g_df["status"] == "已完成",
-                        "期別": g_df["period_number"].apply(lambda x: f"第 {x} 期"),
-                        "預定訪視日": g_df["target_date"].astype(str),
-                        "實際完成日": g_df["visit_date"].fillna(""),
-                        "備註說明": g_df["notes"].fillna("")
-                    })
-
-                    edited_result = st.data_editor(
-                        edit_df,
-                        column_config={
-                            "id": None,
-                            "已完成訪視": st.column_config.CheckboxColumn(
-                                "是否已完成？",
-                                help="勾選即標記為已完成，取消勾選則恢復為待訪視",
-                                default=False,
-                            ),
-                            "期別": st.column_config.TextColumn("期別", disabled=True),
-                            "預定訪視日": st.column_config.TextColumn("預定訪視日", disabled=True),
-                            "實際完成日": st.column_config.TextColumn("實際完成日"),
-                            "備註說明": st.column_config.TextColumn("備註說明"),
-                        },
-                        disabled=["期別", "預定訪視日"],
-                        hide_index=True,
-                        use_container_width=True,
-                        key=f"editor_{idx}"
-                    )
-
-                    diff = edited_result["已完成訪視"] != edit_df["已完成訪視"]
-                    diff_notes = edited_result["備註說明"] != edit_df["備註說明"]
-                    diff_dates = edited_result["實際完成日"] != edit_df["實際完成日"]
-
-                    if diff.any() or diff_notes.any() or diff_dates.any():
-                        if st.button("💾 儲存訪視勾選變更", type="primary", key=f"btn_save_{idx}"):
-                            with st.spinner("資料儲存中..."):
-                                for i_idx, row in edited_result.iterrows():
-                                    sched_id = int(row["id"])
-                                    is_done = row["已完成訪視"]
-                                    note_val = str(row["備註說明"]).strip()
-                                    
-                                    if is_done:
-                                        new_status = "已完成"
-                                        cur_date = str(row["實際完成日"]).strip()
-                                        visit_dt = cur_date if cur_date else date.today().strftime("%Y-%m-%d")
-                                    else:
-                                        new_status = "待訪視"
-                                        visit_dt = None
-
-                                    supabase.table("worker_service_schedules").update({
-                                        "status": new_status,
-                                        "visit_date": visit_dt,
-                                        "notes": note_val
-                                    }).eq("id", sched_id).execute()
-
-                            st.success("✅ 訪視進度變更已儲存！")
-                            st.rerun()
-
-        else:
-            st.info("目前尚無移工資料，請至「批次匯入」或「單筆手動建立」新增移工！")
-
-    # ---------------- 2-2. 移工動態變更 ----------------
-    with sub_tab2:
-        st.subheader("⚠️ 移工狀態動態管理（失聯 / 轉出 / 離境 / 隨時恢復在職）")
-        st.info("💡 彈性說明：若移工發生狀況，可一鍵將未來尚未訪視的期別改為免訪視；若狀況解除，可隨時切回「在職中」恢復排程！先前已訪視紀錄均完整保存。")
-
-        try:
-            worker_list_res = supabase.table("worker_service_schedules").select("worker_name, employer_name, worker_id, employment_status, status_reason").execute().data
-            if worker_list_res:
-                workers_df = pd.DataFrame(worker_list_res).drop_duplicates(subset=["worker_name"])
-            else:
-                workers_df = pd.DataFrame()
-        except:
-            workers_df = pd.DataFrame()
-
-        if not workers_df.empty:
-            worker_options = [
-                f"{str(row['worker_name']).strip()} ｜ 雇主：{row.get('employer_name') or '未填'} ｜ 目前：{row.get('employment_status', '在職中')}"
-                for _, row in workers_df.iterrows()
-            ]
-            selected_option = st.selectbox("請選擇目標移工：", worker_options)
-            sel_idx = worker_options.index(selected_option)
-            selected_worker_row = workers_df.iloc[sel_idx]
-            target_worker_name = str(selected_worker_row["worker_name"]).strip()
-
-            with st.form("worker_status_change_form"):
-                col_s1, col_s2 = st.columns(2)
-                with col_s1:
-                    new_emp_status = st.selectbox(
-                        "變更狀態為：",
-                        ["在職中 (恢復排程)", "失聯(逃跑)", "已轉出", "提前離境", "解約/終止"]
-                    )
-                with col_s2:
-                    status_note = st.text_input(
-                        "異動原因說明：",
-                        placeholder="例：曠職滿三日失聯通報 / 轉出至新雇主"
-                    )
-
-                submit_status_change = st.form_submit_button("⚡ 確認更新移工動態")
-                if submit_status_change:
-                    try:
-                        base_update = {
-                            "employment_status": "在職中" if "在職中" in new_emp_status else new_emp_status,
-                            "status_reason": status_note.strip()
-                        }
-                        supabase.table("worker_service_schedules").update(base_update).eq("worker_name", target_worker_name).execute()
-
-                        if "在職中" in new_emp_status:
-                            supabase.table("worker_service_schedules").update({"status": "待訪視"}).eq("worker_name", target_worker_name).neq("status", "已完成").execute()
-                            st.success(f"✅ 【{target_worker_name}】已恢復為在職中，後續訪視排程已重新上線！")
-                        else:
-                            supabase.table("worker_service_schedules").update({"status": "已終止(免訪視)"}).eq("worker_name", target_worker_name).neq("status", "已完成").execute()
-                            st.warning(f"⚠️ 【{target_worker_name}】已標記為 {new_emp_status}，後續訪視已暫停。隨時可再切回在職中！")
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"更新失敗: {err}")
-        else:
-            st.info("目前尚無移工資料可供變更。")
-
-    # ---------------- 2-3. 批次匯入 ----------------
-    with sub_tab3:
-        st.subheader("批次匯入移工名單 (Excel / CSV)")
-        template_df = pd.DataFrame({
-            "移工姓名": ["SITI", "AGUS"],
-            "入境日或承接日": ["2026-08-01", "2026-08-15"],
-            "雇主名稱": ["富喬工業", "廣達電腦"],
-            "工號": ["W001", "W002"]
-        })
-        csv_template = template_df.to_csv(index=False, encoding="utf-8-sig")
-        st.download_button(
-            label="📥 下載標準匯入範本 (CSV)",
-            data=csv_template,
-            file_name="移工服務排程匯入範本.csv",
-            mime="text/csv"
-        )
-
-        uploaded_file = st.file_uploader("上傳移工名單檔案 (支援 .xlsx, .xls, .csv)", type=["xlsx", "xls", "csv"])
-        if uploaded_file:
+    # 統計指標計算
+    today = date.today()
+    urgent_count = 0
+    overdue_count = 0
+    total_workers = len(schedule_data)
+    
+    for row in schedule_data:
+        d_str = row.get("next_service_date")
+        if d_str:
             try:
-                if uploaded_file.name.endswith(".csv"):
-                    import_df = pd.read_csv(uploaded_file)
-                else:
-                    import_df = pd.read_excel(uploaded_file)
-                
-                st.write("預覽上傳內容：")
-                st.dataframe(import_df.head(), use_container_width=True)
+                target_date = datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
+                days_left = (target_date - today).days
+                if days_left < 0:
+                    overdue_count += 1
+                elif days_left <= 14:
+                    urgent_count += 1
+            except:
+                pass
 
-                req_cols = ["移工姓名", "入境日或承接日"]
-                if not all(col in import_df.columns for col in req_cols):
-                    st.error("❌ 檔案缺少必要欄位！請確認含有「移工姓名」及「入境日或承接日」。")
-                else:
-                    if st.button("🚀 確認匯入並自動推算 3 年（18期）排程"):
-                        total_inserted = 0
-                        with st.spinner("系統正在自動排程並寫入雲端..."):
-                            for _, row in import_df.iterrows():
-                                w_name = str(row["移工姓名"]).strip()
-                                emp_name = str(row.get("雇主名稱", "")).strip() if pd.notna(row.get("雇主名稱")) else ""
-                                w_id = str(row.get("工號", "")).strip() if pd.notna(row.get("工號")) else ""
-                                
-                                raw_date = row["入境日或承接日"]
-                                try:
-                                    start_dt = pd.to_datetime(raw_date).date()
-                                except:
-                                    continue
+    # 排程 KPI 卡片
+    st.markdown(f"""
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">列管名冊總數</div>
+            <div class="kpi-value">{total_workers} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">人</span></div>
+            <span class="kpi-badge badge-blue">在線追蹤中</span>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">兩週內即將到期</div>
+            <div class="kpi-value" style="color: #fbbf24;">{urgent_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">件</span></div>
+            <span class="kpi-badge badge-amber">需儘快排定訪視</span>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">已逾期未完成</div>
+            <div class="kpi-value" style="color: #f87171;">{overdue_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">件</span></div>
+            <span class="kpi-badge badge-red">請立即確認進度</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-                                schedules = []
-                                for i in range(1, 19):
-                                    target_dt = start_dt + relativedelta(months=2 * i)
-                                    schedules.append({
-                                        "worker_id": w_id,
-                                        "worker_name": w_name,
-                                        "employer_name": emp_name,
-                                        "start_date": start_dt.strftime("%Y-%m-%d"),
-                                        "period_number": i,
-                                        "target_date": target_dt.strftime("%Y-%m-%d"),
-                                        "status": "待訪視",
-                                        "employment_status": "在職中"
-                                    })
-                                
-                                if schedules:
-                                    supabase.table("worker_service_schedules").insert(schedules).execute()
-                                    total_inserted += len(schedules)
+    tab_sched_list, tab_sched_add = st.tabs(["📋 服務排程清單", "➕ 新增移工服務週期"])
 
-                        st.success(f"🎉 成功匯入！已為名單移工自動產生共 {total_inserted} 筆雙月訪視排程！")
-                        st.rerun()
-            except Exception as e:
-                st.error(f"檔案解析失敗: {e}")
+    with tab_sched_list:
+        if schedule_data:
+            df = pd.DataFrame(schedule_data)
+            
+            # 處理欄位呈現
+            col_rename = {
+                "worker_name": "移工姓名",
+                "employer_name": "雇主/聘僱單位",
+                "nationality": "國籍",
+                "last_service_date": "上次服務日期",
+                "next_service_date": "下次預計服務日期",
+                "status": "狀態",
+                "notes": "備註"
+            }
+            display_cols = [c for c in col_rename.keys() if c in df.columns]
+            df_display = df[display_cols].rename(columns=col_rename)
+            
+            st.dataframe(df_display, use_container_width=True, hide_index=True)
+        else:
+            st.info("目前尚無移工服務排程紀錄，請由上方頁籤新增資料。")
 
-    # ---------------- 2-4. 單筆手動建立 ----------------
-    with sub_tab4:
-        st.subheader("手動建立單筆移工排程")
-        with st.form("manual_worker_form", clear_on_submit=True):
-            col_m1, col_m2 = st.columns(2)
-            with col_m1:
-                manual_name = st.text_input("移工姓名 *")
-                manual_id = st.text_input("工號 / 護照號 (選填)")
-            with col_m2:
-                manual_emp = st.text_input("雇主名稱 (選填)")
-                manual_start = st.date_input("入境日或承接日 *", value=date.today())
-
-            manual_submit = st.form_submit_button("建立 3 年（18期）雙月訪視排程")
-            if manual_submit:
-                if not manual_name.strip():
-                    st.warning("請填寫移工姓名！")
+    with tab_sched_add:
+        st.markdown("#### 新增列管排程紀錄")
+        with st.form("add_sched_form", clear_on_submit=True):
+            col_w1, col_w2 = st.columns(2)
+            with col_w1:
+                worker_name = st.text_input("移工姓名*")
+                employer_name = st.text_input("雇主/廠區名稱*")
+                nationality = st.selectbox("國籍", ["印尼", "菲律賓", "越南", "泰國", "其他"])
+            with col_w2:
+                last_date = st.date_input("本次/上次服務日期", value=date.today())
+                # 自動推算雙月 (+2 個月)
+                default_next = last_date + relativedelta(months=2)
+                next_date = st.date_input("下次預估雙月服務日期", value=default_next)
+                notes = st.text_input("備註說明 (如：指定訪視重點、需攜帶文件)")
+            
+            submitted_sched = st.form_submit_button("建立排程紀錄")
+            if submitted_sched:
+                if not worker_name or not employer_name:
+                    st.warning("請填寫移工姓名與雇主名稱！")
                 else:
                     try:
-                        schedules = []
-                        for i in range(1, 19):
-                            t_dt = manual_start + relativedelta(months=2 * i)
-                            schedules.append({
-                                "worker_id": manual_id.strip(),
-                                "worker_name": manual_name.strip(),
-                                "employer_name": manual_emp.strip(),
-                                "start_date": manual_start.strftime("%Y-%m-%d"),
-                                "period_number": i,
-                                "target_date": t_dt.strftime("%Y-%m-%d"),
-                                "status": "待訪視",
-                                "employment_status": "在職中"
-                            })
-                        supabase.table("worker_service_schedules").insert(schedules).execute()
-                        st.success(f"✅ 已成功為【{manual_name}】自動推算並建立 18 期排程！")
-                    except Exception as err:
-                        st.error(f"建立失敗: {err}")
+                        payload = {
+                            "worker_name": worker_name.strip(),
+                            "employer_name": employer_name.strip(),
+                            "nationality": nationality,
+                            "last_service_date": str(last_date),
+                            "next_service_date": str(next_date),
+                            "status": "安排中",
+                            "notes": notes.strip() if notes else ""
+                        }
+                        supabase.table("worker_service_schedules").insert(payload).execute()
+                        st.success("✅ 排程紀錄建立成功！")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"新增失敗：{e}")
