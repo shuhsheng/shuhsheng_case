@@ -344,7 +344,7 @@ if menu == "📖 突發案件與處置知識庫":
 
 
 # ==========================================
-# 5. 功能二：移工雙月服務週期排程 (隱藏編號 + 唯一分組 + 勾選編輯)
+# 5. 功能二：移工雙月服務週期排程 (隱藏編號 + 期數置中 + 唯一分組)
 # ==========================================
 elif menu == "📅 移工雙月服務週期排程":
     st.markdown("""
@@ -464,9 +464,10 @@ elif menu == "📅 移工雙月服務週期排程":
                     subset_df = pd.DataFrame()
                     subset_df["完成?"] = (w_df["status"] == "已完成")
                     subset_df["狀態"] = w_df["status"]
-                    subset_df["期數"] = w_df["period_number"]
+                    # 格式化為置中字串格式，讓期數排在正中央
+                    subset_df["期數"] = w_df["period_number"].apply(lambda x: f"第 {x} 期")
                     subset_df["目標服務日期"] = w_df["target_date"]
-                    subset_df["_hidden_id"] = w_df["id"]  # 隱藏用內部 ID
+                    subset_df["_hidden_id"] = w_df["id"]
 
                     st.caption("提示：直接勾選「完成?」或修改「狀態」，再點下方按鈕即可同步存入資料庫。")
                     
@@ -481,9 +482,9 @@ elif menu == "📅 移工雙月服務週期排程":
                                 options=["待訪視", "已完成", "安排中", "待追蹤"],
                                 required=True
                             ),
-                            "期數": st.column_config.NumberColumn("期數", disabled=True),
+                            "期數": st.column_config.TextColumn("期數", disabled=True),
                             "目標服務日期": st.column_config.TextColumn("目標服務日期", disabled=True),
-                            "_hidden_id": None,  # 將編號從畫面中完全隱藏
+                            "_hidden_id": None,  # 完全隱藏編號
                         },
                         key=f"editor_worker_{idx}"
                     )
