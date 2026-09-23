@@ -499,7 +499,7 @@ if menu == "📅 移工雙月服務週期排程":
 
 
 # ==========================================
-# 5. 模組二：突發案件與處置知識庫 (cases) - 精準對齊 created_by 與必填欄位
+# 5. 模組二：突發案件與處置知識庫 (cases) - 完整補齊 created_at 與所有 NOT NULL 欄位
 # ==========================================
 elif menu == "📖 突發案件與處置知識庫":
     st.markdown(f"""
@@ -521,7 +521,6 @@ elif menu == "📖 突發案件與處置知識庫":
 
     total_cases = len(cases_data)
     
-    # 統計分類
     existing_cats = set([str(c.get("category", "")).strip() for c in cases_data if c.get("category")])
     all_cat_options = DEFAULT_CATEGORIES.copy()
     for c_val in existing_cats:
@@ -615,7 +614,6 @@ elif menu == "📖 突發案件與處置知識庫":
                         if save_btn:
                             final_cat = custom_cat_val.strip() if (new_cat_sel == "其他" and custom_cat_val.strip()) else new_cat_sel
                             
-                            # 全面帶齊所有真實存在的欄位（created_by, problem, result, solution, title, category）
                             update_payload = {
                                 "title": new_title_val.strip(),
                                 "problem": new_title_val.strip(),
@@ -671,14 +669,15 @@ elif menu == "📖 突發案件與處置知識庫":
                 elif new_category_sel == "其他" and not custom_category_input.strip():
                     st.warning("選擇「其他」分類時，請在自訂空格中輸入具體分類名稱！")
                 else:
-                    # 關鍵修正：使用 created_by，並同時填滿 problem 與 result！
+                    # 徹底補齊 created_at + problem + solution + result + category + created_by！
                     insert_payload = {
                         "title": new_title.strip(),
                         "problem": new_title.strip(),
                         "solution": new_solution.strip(),
                         "result": new_solution.strip(),
                         "category": final_category,
-                        "created_by": new_creator.strip() if new_creator else current_role
+                        "created_by": new_creator.strip() if new_creator else current_role,
+                        "created_at": datetime.now().isoformat()
                     }
 
                     try:
