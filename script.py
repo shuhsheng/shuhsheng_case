@@ -285,7 +285,7 @@ current_role = st.session_state["user_role"]
 
 
 # ==========================================
-# 4. 模組一：移工雙月服務週期排程 (自動精算 18/36 期排程)
+# 4. 模組一：移工雙月服務週期排程 (支援編輯基本資料與老闆刪除)
 # ==========================================
 if menu == "📅 移工雙月服務週期排程":
     st.markdown(f"""
@@ -406,6 +406,7 @@ if menu == "📅 移工雙月服務週期排程":
                 expander_label = f"👤 {w_name} ｜ 🏢 雇主：{e_name} {start_hint} ｜ 進度：{done_p}/{total_p} 期 ｜ {status_text}"
                 
                 with st.expander(expander_label):
+                    # 表格資料展示與勾選
                     subset_df = pd.DataFrame()
                     subset_df["完成?"] = (w_df["status"] == "已完成")
                     subset_df["狀態"] = w_df["status"]
@@ -433,7 +434,8 @@ if menu == "📅 移工雙月服務週期排程":
                         key=f"editor_worker_{idx}"
                     )
                     
-                    if st.button(f"💾 儲存【{w_name}】的排程變更", key=f"btn_save_{idx}"):
+                    # 儲存勾選按鈕
+                    if st.button(f"💾 儲存【{w_name}】的訪視狀態變更", key=f"btn_save_status_{idx}"):
                         saved_count = 0
                         for _, row in edited_subset.iterrows():
                             rec_id = int(row["_hidden_id"])
@@ -459,11 +461,57 @@ if menu == "📅 移工雙月服務週期排程":
                             st.rerun()
                         else:
                             st.info("沒有偵測到任何狀態變更。")
+
+                    # ==========================================
+                    # 行政/老闆專用：基本資料打錯時的修改面板
+                    # ==========================================
+                    if current_role in ["行政", "老闆"]:
+                        st.markdown("---")
+                        st.markdown("##### ✏️ 修正移工基本資料（打錯字時批次修正所有期數）")
+                        col_m1, col_m2, col_m3 = st.columns([2, 2, 2])
+                        with col_m1:
+                            edit_w_name = st.text_input("移工姓名", value=w_name, key=f"edit_wn_{idx}")
+                        with col_m2:
+                            edit_e_name = st.text_input("雇主/廠區名稱", value=e_name, key=f"edit_en_{idx}")
+                        with col_m3:
+                            curr_start_d = datetime.strptime(s_date, "%Y-%m-%d").date() if s_date else date.today()
+                            edit_s_date = st.date_input("合約起始基準日", value=curr_start_d, key=f"edit_sd_{idx}")
+                        
+                        btn_c1, btn_c2 = st.columns([2, 2])
+                        with btn_c1:
+                            if st.button(f"💾 更新【{w_name}】基本資料", key=f"btn_update_info_{idx}"):
+                                try:
+                                    all_ids = w_df["id"].tolist()
+                                    for rid in all_ids:
+                                        supabase.table("worker_service_schedules").update({
+                                            "worker_name": edit_w_name.strip(),
+                                            "employer_name": edit_e_name.strip(),
+                                            "start_date": str(edit_s_date)
+                                        }).eq("id", rid).execute()
+                                    st.success(f"✅ 已成功更新【{edit_w_name}】所有期數的基本資料！")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"更新失敗：{err}")
+
+                    # ==========================================
+                    # 老闆專用：刪除整組合約排程
+                    # ==========================================
+                    if current_role == "老闆":
+                        with btn_c2:
+                            if st.button(f"🗑️ 刪除【{w_name}】整份合約排程", key=f"btn_delete_group_{idx}"):
+                                try:
+                                    all_ids = w_df["id"].tolist()
+                                    for rid in all_ids:
+                                        supabase.table("worker_service_schedules").delete().eq("id", rid).execute()
+                                    st.success(f"✅ 已徹底刪除【{w_name}】共 {len(all_ids)} 筆排程！")
+                                    st.rerun()
+                                except Exception as err:
+                                    st.error(f"刪除失敗：{err}")
         else:
             st.info("目前尚無移工服務排程紀錄。")
 
     # ==========================================
-    # 核心亮點：自動批次推算移工整份合約雙月訪視日曆
+    # 核心：自動批次推算移工整份合約雙月訪視日曆
     # ==========================================
     if tab_sched_add:
         with tab_sched_add:
@@ -490,10 +538,8 @@ if menu == "📅 移工雙月服務週期排程":
                     if not worker_name_in or not employer_name_in:
                         st.warning("請填寫移工姓名與雇主名稱！")
                     else:
-                        # 自動推算全期數清單
                         batch_rows = []
                         for p in range(1, total_periods_choice + 1):
-                            # 精準日曆推算：每 2 個月一期，遇到月底日自動適配（絕不溢出或延後超過一天）
                             target_d = start_date_in + relativedelta(months=2 * p)
                             batch_rows.append({
                                 "worker_name": worker_name_in.strip(),
@@ -505,7 +551,6 @@ if menu == "📅 移工雙月服務週期排程":
                             })
                         
                         try:
-                            # 一次整批寫入 Supabase
                             supabase.table("worker_service_schedules").insert(batch_rows).execute()
                             st.success(f"🎉 成功！已為【{worker_name_in}】一次產生共 {total_periods_choice} 期（每 2 個月一次）的法定雙月訪視排程！")
                             st.rerun()
