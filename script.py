@@ -5,6 +5,22 @@ from dateutil.relativedelta import relativedelta
 from supabase import create_client, Client
 
 # ==========================================
+# 0. 系統預設業務分類常數
+# ==========================================
+DEFAULT_CATEGORIES = [
+    "入境",
+    "出境",
+    "健檢",
+    "轉出",
+    "失聯",
+    "逃跑",
+    "生病",
+    "過世",
+    "事故",
+    "其他"
+]
+
+# ==========================================
 # 1. 頁面基礎設定與精緻高對比深色主題 CSS
 # ==========================================
 st.set_page_config(
@@ -14,7 +30,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 徹底修復側邊欄白底白字問題的高權重 CSS
 st.markdown("""
 <style>
     /* 全域背景與文字基礎 */
@@ -56,10 +71,7 @@ st.markdown("""
         border-bottom: 2px solid #38bdf8 !important;
     }
     
-    /* ====================================================
-       關鍵修復：側邊欄與全域輸入框、下拉選單背景與文字顏色強制覆蓋
-       ==================================================== */
-    /* 1. 外層容器底色強制轉為深藍灰 */
+    /* 側邊欄與全域輸入框、下拉選單樣式 */
     div[data-baseweb="input"], 
     div[data-baseweb="base-input"],
     div[data-baseweb="select"],
@@ -69,15 +81,12 @@ st.markdown("""
         border-color: rgba(255, 255, 255, 0.25) !important;
         border-radius: 8px !important;
     }
-
-    /* 聚焦邊框高亮藍 */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="select"] > div:focus-within {
         border-color: #38bdf8 !important;
         box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* 2. 輸入文字與密碼遮罩點點純白顯示 */
     input, 
     input[type="text"], 
     input[type="password"],
@@ -88,14 +97,15 @@ st.markdown("""
         background-color: #1e293b !important;
         caret-color: #38bdf8 !important;
     }
+    input::placeholder, textarea::placeholder {
+        color: #94a3b8 !important;
+    }
 
-    /* 3. 下拉選單中顯示的文字純白 */
     div[data-baseweb="select"] * {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* 4. 下拉展開浮層選單背景與選項 */
     ul[data-baseweb="menu"], 
     div[data-baseweb="popover"] div {
         background-color: #1e293b !important;
@@ -108,6 +118,12 @@ st.markdown("""
         background-color: #334155 !important;
     }
 
+    div[data-testid="stNumberInput"] input, div[data-testid="stDateInput"] input {
+        color: #ffffff !important;
+        background-color: #1e293b !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
+    
     /* Expander 展開卡片深色科技化 */
     [data-testid="stExpander"] {
         background-color: #111827 !important;
@@ -483,7 +499,7 @@ if menu == "📅 移工雙月服務週期排程":
 
 
 # ==========================================
-# 5. 模組二：突發案件與處置知識庫 (cases)
+# 5. 模組二：突發案件與處置知識庫 (cases) - 完整呈現建檔人
 # ==========================================
 elif menu == "📖 突發案件與處置知識庫":
     st.markdown(f"""
@@ -521,6 +537,12 @@ elif menu == "📖 突發案件與處置知識庫":
     </div>
     """, unsafe_allow_html=True)
 
+    existing_cats = [c.get("category") for c in cases_data if c.get("category")]
+    all_cat_options = DEFAULT_CATEGORIES.copy()
+    for c_val in existing_cats:
+        if c_val not in all_cat_options:
+            all_cat_options.append(c_val)
+
     if current_role in ["行政", "老闆"]:
         tabs = st.tabs(["🔍 案例知識庫清單", "➕ 建立新案例紀錄"])
         tab_case_list = tabs[0]
@@ -534,8 +556,8 @@ elif menu == "📖 突發案件與處置知識庫":
         with col_search:
             search_query = st.text_input("輸入關鍵字查詢 (如：健檢不合格、失聯、急診、證件補發...)", placeholder="輸入搜尋關鍵字...")
         with col_cat:
-            all_categories = ["全部分類"] + sorted(list(set([c.get("category", "其他") for c in cases_data if c.get("category")])))
-            selected_cat = st.selectbox("分類篩選", all_categories)
+            filter_categories = ["全部分類"] + all_cat_options
+            selected_cat = st.selectbox("分類篩選", filter_categories)
         
         filtered_cases = cases_data
         if selected_cat != "全部分類":
@@ -546,6 +568,7 @@ elif menu == "📖 突發案件與處置知識庫":
                 if search_query.lower() in str(c.get("title", "")).lower() 
                 or search_query.lower() in str(c.get("solution", "")).lower()
                 or search_query.lower() in str(c.get("description", "")).lower()
+                or search_query.lower() in str(c.get("created_by", "")).lower()
             ]
         
         st.markdown(f"<div style='margin: 0.5rem 0 1rem 0; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆案例</div>", unsafe_allow_html=True)
@@ -555,22 +578,30 @@ elif menu == "📖 突發案件與處置知識庫":
                 case_id = item.get("id")
                 title = item.get("title", "未命名案件")
                 cat = item.get("category", "其他")
+                # 兼容 created_by 或 author 欄位
+                creator = item.get("created_by") or item.get("author") or "系統/未註記"
                 sol = item.get("solution") or item.get("description") or ""
                 created = str(item.get("created_at", ""))[:10]
                 
-                expander_title = f"📋 【{cat}】{title} ｜ 建檔日期：{created}"
+                expander_title = f"📋 【{cat}】{title} ｜ 建檔人：{creator} ｜ 建檔日期：{created}"
                 
                 with st.expander(expander_title):
                     if current_role == "外務":
-                        st.markdown(f"**類別標籤**：`{cat}` ｜ **建檔日期**：`{created}`")
+                        st.markdown(f"**類別標籤**：`{cat}` ｜ **建檔人**：`{creator}` ｜ **建檔日期**：`{created}`")
                         st.markdown(f"<div class='sop-view-box'>{sol}</div>", unsafe_allow_html=True)
                     else:
                         with st.form(f"edit_case_form_{case_id}"):
-                            edit_col1, edit_col2 = st.columns([3, 1])
+                            edit_col1, edit_col2, edit_col3 = st.columns([2, 1, 1])
                             with edit_col1:
                                 new_title_val = st.text_input("案例名稱", value=title, key=f"t_{case_id}")
                             with edit_col2:
-                                new_cat_val = st.text_input("分類標籤", value=cat, key=f"c_{case_id}")
+                                edit_cat_list = all_cat_options.copy()
+                                if cat not in edit_cat_list:
+                                    edit_cat_list.append(cat)
+                                default_idx = edit_cat_list.index(cat) if cat in edit_cat_list else 0
+                                new_cat_val = st.selectbox("分類標籤", edit_cat_list, index=default_idx, key=f"c_{case_id}")
+                            with edit_col3:
+                                new_creator_val = st.text_input("建檔人", value=creator, key=f"u_{case_id}")
                                 
                             new_sol_val = st.text_area("處置 SOP 說明與經驗", value=sol, height=180, key=f"s_{case_id}")
                             
@@ -580,11 +611,18 @@ elif menu == "📖 突發案件與處置知識庫":
                             
                             if save_btn:
                                 try:
-                                    supabase.table("cases").update({
+                                    update_payload = {
                                         "title": new_title_val.strip(),
-                                        "category": new_cat_val.strip(),
+                                        "category": new_cat_val,
                                         "solution": new_sol_val.strip()
-                                    }).eq("id", case_id).execute()
+                                    }
+                                    # 若資料表有 created_by 欄位則一併更新
+                                    if "created_by" in item or "author" not in item:
+                                        update_payload["created_by"] = new_creator_val.strip()
+                                    else:
+                                        update_payload["author"] = new_creator_val.strip()
+                                        
+                                    supabase.table("cases").update(update_payload).eq("id", case_id).execute()
                                     st.success("✅ 案例已更新完成！")
                                     st.rerun()
                                 except Exception as e:
@@ -607,8 +645,15 @@ elif menu == "📖 突發案件與處置知識庫":
         with tab_case_add:
             st.markdown("#### 建立新的突發案例 SOP (行政 / 老闆權限)")
             with st.form("add_case_form", clear_on_submit=True):
-                new_title = st.text_input("案例名稱 / 狀況主旨*", placeholder="例如：印尼籍移工初次健檢異常複檢流程")
-                new_category = st.text_input("分類標籤*", placeholder="例如：健康檢查、入出國管理、勞資爭議、急診就醫")
+                col_add_t, col_add_c, col_add_u = st.columns([2, 1, 1])
+                with col_add_t:
+                    new_title = st.text_input("案例名稱 / 狀況主旨*", placeholder="例如：印尼籍移工初次健檢異常複檢流程")
+                with col_add_c:
+                    new_category = st.selectbox("分類標籤*", DEFAULT_CATEGORIES, index=0)
+                with col_add_u:
+                    # 預設自動帶入當前登入身分
+                    new_creator = st.text_input("建檔人員*", value=f"{current_role}同仁")
+                
                 new_solution = st.text_area("處置 SOP 流程與經驗說明*", placeholder="請詳細條列處理步驟、法規依據、通報對象或配合單位聯絡方式...", height=160)
                 
                 submitted = st.form_submit_button("儲存新案例至雲端知識庫")
@@ -619,11 +664,19 @@ elif menu == "📖 突發案件與處置知識庫":
                         try:
                             payload = {
                                 "title": new_title.strip(),
-                                "category": new_category.strip() if new_category else "其他",
-                                "solution": new_solution.strip()
+                                "category": new_category,
+                                "solution": new_solution.strip(),
+                                "created_by": new_creator.strip() if new_creator else current_role
                             }
                             supabase.table("cases").insert(payload).execute()
                             st.success("✅ 案例已成功儲存至知識庫！")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"儲存失敗：{e}")
+                            # 容錯處理：如果資料表無 created_by 欄位則退回無建檔人欄位儲存
+                            try:
+                                payload.pop("created_by", None)
+                                supabase.table("cases").insert(payload).execute()
+                                st.success("✅ 案例已成功儲存至知識庫！")
+                                st.rerun()
+                            except Exception as err:
+                                st.error(f"儲存失敗：{err}")
