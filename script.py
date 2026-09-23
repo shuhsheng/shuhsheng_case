@@ -285,7 +285,7 @@ current_role = st.session_state["user_role"]
 
 
 # ==========================================
-# 4. 模組一：移工雙月服務週期排程 (隱藏編號 + 期數置中)
+# 4. 模組一：移工雙月服務週期排程
 # ==========================================
 if menu == "📅 移工雙月服務週期排程":
     st.markdown(f"""
@@ -499,7 +499,7 @@ if menu == "📅 移工雙月服務週期排程":
 
 
 # ==========================================
-# 5. 模組二：突發案件與處置知識庫 (cases) - 動態欄位適配防錯
+# 5. 模組二：突發案件與處置知識庫 (cases) - 完整相容 problem / solution / category
 # ==========================================
 elif menu == "📖 突發案件與處置知識庫":
     st.markdown(f"""
@@ -512,34 +512,21 @@ elif menu == "📖 突發案件與處置知識庫":
     """, unsafe_allow_html=True)
     
     cases_data = []
-    available_cols = set()
     if supabase:
         try:
             res = supabase.table("cases").select("*").execute()
             cases_data = res.data or []
-            if cases_data:
-                available_cols = set(cases_data[0].keys())
         except Exception as e:
             st.error(f"讀取資料庫失敗: {e}")
 
     total_cases = len(cases_data)
     
-    # 判斷分類來源欄位（category 或 type）
-    cat_col_name = "category" if "category" in available_cols else ("type" if "type" in available_cols else None)
-    
-    # 判斷內容來源欄位（solution 或 description）
-    sol_col_name = "solution" if "solution" in available_cols else ("description" if "description" in available_cols else None)
-    
-    # 判斷建檔人欄位（created_by 或 author）
-    user_col_name = "created_by" if "created_by" in available_cols else ("author" if "author" in available_cols else None)
-
-    # 計算涵蓋分類
-    unique_cats = set()
-    for c in cases_data:
-        v = c.get(cat_col_name, "") if cat_col_name else ""
-        if v:
-            unique_cats.add(v)
-    cat_count = len(unique_cats)
+    # 統計分類
+    existing_cats = set([str(c.get("category", "")).strip() for c in cases_data if c.get("category")])
+    all_cat_options = DEFAULT_CATEGORIES.copy()
+    for c_val in existing_cats:
+        if c_val and c_val not in all_cat_options:
+            all_cat_options.append(c_val)
 
     st.markdown(f"""
     <div class="kpi-container">
@@ -550,16 +537,11 @@ elif menu == "📖 突發案件與處置知識庫":
         </div>
         <div class="kpi-card">
             <div class="kpi-title">涵蓋類別</div>
-            <div class="kpi-value">{cat_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">大類</span></div>
+            <div class="kpi-value">{len(existing_cats)} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">大類</span></div>
             <span class="kpi-badge badge-green">完整分類歸檔</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    all_cat_options = DEFAULT_CATEGORIES.copy()
-    for c_val in unique_cats:
-        if c_val not in all_cat_options:
-            all_cat_options.append(c_val)
 
     if current_role in ["行政", "老闆"]:
         tabs = st.tabs(["🔍 案例知識庫清單", "➕ 建立新案例紀錄"])
@@ -578,25 +560,30 @@ elif menu == "📖 突發案件與處置知識庫":
             selected_cat = st.selectbox("分類篩選", filter_categories)
         
         filtered_cases = cases_data
-        if selected_cat != "全部分類" and cat_col_name:
-            filtered_cases = [c for c in filtered_cases if c.get(cat_col_name) == selected_cat]
+        
+        if selected_cat != "全部分類":
+            filtered_cases = [c for c in filtered_cases if str(c.get("category", "")).strip() == selected_cat]
+            
         if search_query:
             filtered_cases = [
                 c for c in filtered_cases 
                 if search_query.lower() in str(c.get("title", "")).lower() 
-                or search_query.lower() in str(c.get(sol_col_name or "solution", "")).lower()
-                or (user_col_name and search_query.lower() in str(c.get(user_col_name, "")).lower())
+                or search_query.lower() in str(c.get("problem", "")).lower()
+                or search_query.lower() in str(c.get("solution", "")).lower()
+                or search_query.lower() in str(c.get("description", "")).lower()
+                or search_query.lower() in str(c.get("author", "")).lower()
+                or search_query.lower() in str(c.get("created_by", "")).lower()
             ]
         
-        st.markdown(f"<div style='margin-0.5rem 0 1rem 0; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆案例</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-bottom: 1rem; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆案例</div>", unsafe_allow_html=True)
         
         if filtered_cases:
             for item in filtered_cases:
                 case_id = item.get("id")
-                title = item.get("title", "未命名案件")
-                cat = item.get(cat_col_name, "其他") if cat_col_name else "案例"
-                creator = item.get(user_col_name, "系統/未註記") if user_col_name else "系統"
-                sol = item.get(sol_col_name, "") if sol_col_name else ""
+                title = item.get("title") or item.get("problem") or "未命名案件"
+                cat = str(item.get("category", "其他")).strip() or "其他"
+                creator = item.get("author") or item.get("created_by") or "系統/未註記"
+                sol = item.get("solution") or item.get("description") or ""
                 created = str(item.get("created_at", ""))[:10]
                 
                 expander_title = f"📋 【{cat}】{title} ｜ 建檔人：{creator} ｜ 建檔日期：{created}"
@@ -629,14 +616,18 @@ elif menu == "📖 突發案件與處置知識庫":
                         if save_btn:
                             final_cat = custom_cat_val.strip() if (new_cat_sel == "其他" and custom_cat_val.strip()) else new_cat_sel
                             
-                            # 動態對齊安全 Payload：只送資料庫真正存在的欄位
-                            update_payload = {"title": new_title_val.strip()}
-                            if cat_col_name:
-                                update_payload[cat_col_name] = final_cat
-                            if sol_col_name:
-                                update_payload[sol_col_name] = new_sol_val.strip()
-                            if user_col_name:
-                                update_payload[user_col_name] = new_creator_val.strip()
+                            # 同步更新 title 與 problem，徹底避免 null constraint
+                            update_payload = {
+                                "title": new_title_val.strip(),
+                                "problem": new_title_val.strip(),
+                                "category": final_cat,
+                                "solution": new_sol_val.strip()
+                            }
+                            # 建檔人欄位相容
+                            if "author" in item:
+                                update_payload["author"] = new_creator_val.strip()
+                            elif "created_by" in item:
+                                update_payload["created_by"] = new_creator_val.strip()
 
                             try:
                                 supabase.table("cases").update(update_payload).eq("id", case_id).execute()
@@ -684,17 +675,26 @@ elif menu == "📖 突發案件與處置知識庫":
                 elif new_category_sel == "其他" and not custom_category_input.strip():
                     st.warning("選擇「其他」分類時，請在自訂空格中輸入具體分類名稱！")
                 else:
-                    insert_payload = {"title": new_title.strip()}
-                    if cat_col_name:
-                        insert_payload[cat_col_name] = final_category
-                    if sol_col_name:
-                        insert_payload[sol_col_name] = new_solution.strip()
-                    if user_col_name:
-                        insert_payload[user_col_name] = new_creator.strip()
+                    # 關鍵：同時傳送 title 與 problem，滿足資料庫的 not-null constraint！
+                    insert_payload = {
+                        "title": new_title.strip(),
+                        "problem": new_title.strip(),
+                        "category": final_category,
+                        "solution": new_solution.strip(),
+                        "author": new_creator.strip() if new_creator else current_role
+                    }
 
                     try:
                         supabase.table("cases").insert(insert_payload).execute()
-                        st.success(f"✅ 案例已成功儲存至知識庫！")
+                        st.success(f"✅ 案例【{final_category}】已成功儲存至知識庫！")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"儲存失敗：{e}")
+                        # 兼容：若 author 不存在改嘗試 created_by
+                        try:
+                            insert_payload.pop("author", None)
+                            insert_payload["created_by"] = new_creator.strip() if new_creator else current_role
+                            supabase.table("cases").insert(insert_payload).execute()
+                            st.success(f"✅ 案例【{final_category}】已成功儲存至知識庫！")
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"儲存失敗：{err}")
