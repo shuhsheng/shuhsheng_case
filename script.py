@@ -356,7 +356,7 @@ if menu == "📅 移工雙月服務週期排程":
         <div class="kpi-card">
             <div class="kpi-title">已逾期未完成</div>
             <div class="kpi-value" style="color: #f87171;">{overdue_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">件</span></div>
-            <span class="kpi-badge badge-red">請儘速確認進度</span>
+            <span class="kpi-badge badge-red">請隱速確認進度</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -499,7 +499,7 @@ if menu == "📅 移工雙月服務週期排程":
 
 
 # ==========================================
-# 5. 模組二：突發案件與處置知識庫 (cases) - 完整相容 problem / solution / category
+# 5. 模組二：突發案件與處置知識庫 (cases)
 # ==========================================
 elif menu == "📖 突發案件與處置知識庫":
     st.markdown(f"""
@@ -521,7 +521,6 @@ elif menu == "📖 突發案件與處置知識庫":
 
     total_cases = len(cases_data)
     
-    # 統計分類
     existing_cats = set([str(c.get("category", "")).strip() for c in cases_data if c.get("category")])
     all_cat_options = DEFAULT_CATEGORIES.copy()
     for c_val in existing_cats:
@@ -570,6 +569,7 @@ elif menu == "📖 突發案件與處置知識庫":
                 if search_query.lower() in str(c.get("title", "")).lower() 
                 or search_query.lower() in str(c.get("problem", "")).lower()
                 or search_query.lower() in str(c.get("solution", "")).lower()
+                or search_query.lower() in str(c.get("result", "")).lower()
                 or search_query.lower() in str(c.get("description", "")).lower()
                 or search_query.lower() in str(c.get("author", "")).lower()
                 or search_query.lower() in str(c.get("created_by", "")).lower()
@@ -583,7 +583,7 @@ elif menu == "📖 突發案件與處置知識庫":
                 title = item.get("title") or item.get("problem") or "未命名案件"
                 cat = str(item.get("category", "其他")).strip() or "其他"
                 creator = item.get("author") or item.get("created_by") or "系統/未註記"
-                sol = item.get("solution") or item.get("description") or ""
+                sol = item.get("solution") or item.get("result") or item.get("description") or ""
                 created = str(item.get("created_at", ""))[:10]
                 
                 expander_title = f"📋 【{cat}】{title} ｜ 建檔人：{creator} ｜ 建檔日期：{created}"
@@ -616,17 +616,16 @@ elif menu == "📖 突發案件與處置知識庫":
                         if save_btn:
                             final_cat = custom_cat_val.strip() if (new_cat_sel == "其他" and custom_cat_val.strip()) else new_cat_sel
                             
-                            # 同步更新 title 與 problem，徹底避免 null constraint
+                            # 全面帶齊所有可能欄位，避開所有 NOT NULL 約束
                             update_payload = {
                                 "title": new_title_val.strip(),
                                 "problem": new_title_val.strip(),
                                 "category": final_cat,
-                                "solution": new_sol_val.strip()
+                                "solution": new_sol_val.strip(),
+                                "result": new_sol_val.strip(),
+                                "author": new_creator_val.strip()
                             }
-                            # 建檔人欄位相容
-                            if "author" in item:
-                                update_payload["author"] = new_creator_val.strip()
-                            elif "created_by" in item:
+                            if "created_by" in item:
                                 update_payload["created_by"] = new_creator_val.strip()
 
                             try:
@@ -675,12 +674,13 @@ elif menu == "📖 突發案件與處置知識庫":
                 elif new_category_sel == "其他" and not custom_category_input.strip():
                     st.warning("選擇「其他」分類時，請在自訂空格中輸入具體分類名稱！")
                 else:
-                    # 關鍵：同時傳送 title 與 problem，滿足資料庫的 not-null constraint！
+                    # 全面填滿 problem, solution, result, author，徹底消滅 NOT NULL 報錯！
                     insert_payload = {
                         "title": new_title.strip(),
                         "problem": new_title.strip(),
                         "category": final_category,
                         "solution": new_solution.strip(),
+                        "result": new_solution.strip(),
                         "author": new_creator.strip() if new_creator else current_role
                     }
 
@@ -689,12 +689,4 @@ elif menu == "📖 突發案件與處置知識庫":
                         st.success(f"✅ 案例【{final_category}】已成功儲存至知識庫！")
                         st.rerun()
                     except Exception as e:
-                        # 兼容：若 author 不存在改嘗試 created_by
-                        try:
-                            insert_payload.pop("author", None)
-                            insert_payload["created_by"] = new_creator.strip() if new_creator else current_role
-                            supabase.table("cases").insert(insert_payload).execute()
-                            st.success(f"✅ 案例【{final_category}】已成功儲存至知識庫！")
-                            st.rerun()
-                        except Exception as err:
-                            st.error(f"儲存失敗：{err}")
+                        st.error(f"儲存失敗：{e}")
