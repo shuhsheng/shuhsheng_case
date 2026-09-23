@@ -285,7 +285,7 @@ current_role = st.session_state["user_role"]
 
 
 # ==========================================
-# 4. 模組一：移工雙月服務週期排程
+# 4. 模組一：移工雙月服務週期排程 (自動精算 18/36 期排程)
 # ==========================================
 if menu == "📅 移工雙月服務週期排程":
     st.markdown(f"""
@@ -362,7 +362,7 @@ if menu == "📅 移工雙月服務週期排程":
     """, unsafe_allow_html=True)
 
     if current_role in ["行政", "老闆"]:
-        tabs = st.tabs(["📋 移工排程列表 (點選展開)", "➕ 新增雙月服務週期"])
+        tabs = st.tabs(["📋 移工排程列表 (點選展開)", "⚡ 自動批次推算移工合約排程"])
         tab_sched_list = tabs[0]
         tab_sched_add = tabs[1]
     else:
@@ -462,44 +462,59 @@ if menu == "📅 移工雙月服務週期排程":
         else:
             st.info("目前尚無移工服務排程紀錄。")
 
+    # ==========================================
+    # 核心亮點：自動批次推算移工整份合約雙月訪視日曆
+    # ==========================================
     if tab_sched_add:
         with tab_sched_add:
-            st.markdown("#### 新增雙月服務週期紀錄 (行政 / 老闆權限)")
-            with st.form("add_sched_form", clear_on_submit=True):
-                col_w1, col_w2 = st.columns(2)
-                with col_w1:
-                    worker_name = st.text_input("移工姓名*")
-                    employer_name = st.text_input("雇主/廠區名稱*")
-                    period_num = st.number_input("服務期數 (第幾期)", min_value=1, value=1, step=1)
-                with col_w2:
-                    start_d = st.date_input("起始基準日期*", value=date.today())
-                    default_target = start_d + relativedelta(months=2)
-                    target_d = st.date_input("目標服務日期 (雙月)*", value=default_target)
-                    status_choice = st.selectbox("初始狀態", ["待訪視", "已完成", "安排中", "待追蹤"])
+            st.markdown("#### ⚡ 自動批次推算移工雙月服務週期（行政 / 老闆權限）")
+            st.info("💡 輸入基本資料與起算日，系統將按照勞動部評鑑日曆天數規則，精確每 2 個月推算一期，自動生成所有期數並寫入資料庫，絕不超期！")
+            
+            with st.form("auto_generate_schedules_form"):
+                col_in1, col_in2 = st.columns(2)
+                with col_in1:
+                    worker_name_in = st.text_input("移工姓名*", placeholder="例如：SUTRISNO 或 阮文勇")
+                    employer_name_in = st.text_input("雇主 / 廠區名稱*", placeholder="例如：台塑企業 或 大立光電")
+                with col_in2:
+                    start_date_in = st.date_input("合約起始基準日 (入境日/承接日)*", value=date.today())
+                    total_periods_choice = st.selectbox(
+                        "產生總期數 (每 2 個月一次)：",
+                        [18, 36, 12, 6],
+                        index=0,
+                        help="18期 = 36個月(3年合約)；36期 = 72個月(6年長約)"
+                    )
                 
-                submitted_sched = st.form_submit_button("建立排程紀錄")
-                if submitted_sched:
-                    if not worker_name or not employer_name:
+                submitted_auto = st.form_submit_button("⚡ 立即批次自動產生全期數排程")
+                
+                if submitted_auto:
+                    if not worker_name_in or not employer_name_in:
                         st.warning("請填寫移工姓名與雇主名稱！")
                     else:
-                        try:
-                            payload = {
-                                "worker_name": worker_name.strip(),
-                                "employer_name": employer_name.strip(),
-                                "start_date": str(start_d),
-                                "period_number": int(period_num),
+                        # 自動推算全期數清單
+                        batch_rows = []
+                        for p in range(1, total_periods_choice + 1):
+                            # 精準日曆推算：每 2 個月一期，遇到月底日自動適配（絕不溢出或延後超過一天）
+                            target_d = start_date_in + relativedelta(months=2 * p)
+                            batch_rows.append({
+                                "worker_name": worker_name_in.strip(),
+                                "employer_name": employer_name_in.strip(),
+                                "start_date": str(start_date_in),
+                                "period_number": p,
                                 "target_date": str(target_d),
-                                "status": status_choice
-                            }
-                            supabase.table("worker_service_schedules").insert(payload).execute()
-                            st.success("✅ 排程紀錄已成功新增至 Supabase！")
+                                "status": "待訪視"
+                            })
+                        
+                        try:
+                            # 一次整批寫入 Supabase
+                            supabase.table("worker_service_schedules").insert(batch_rows).execute()
+                            st.success(f"🎉 成功！已為【{worker_name_in}】一次產生共 {total_periods_choice} 期（每 2 個月一次）的法定雙月訪視排程！")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"新增失敗：{e}")
+                            st.error(f"批次建立失敗：{e}")
 
 
 # ==========================================
-# 5. 模組二：突發案件與處置知識庫 (cases) - 完整補齊 created_at 與所有 NOT NULL 欄位
+# 5. 模組二：突發案件與處置知識庫 (cases)
 # ==========================================
 elif menu == "📖 突發案件與處置知識庫":
     st.markdown(f"""
@@ -669,7 +684,6 @@ elif menu == "📖 突發案件與處置知識庫":
                 elif new_category_sel == "其他" and not custom_category_input.strip():
                     st.warning("選擇「其他」分類時，請在自訂空格中輸入具體分類名稱！")
                 else:
-                    # 徹底補齊 created_at + problem + solution + result + category + created_by！
                     insert_payload = {
                         "title": new_title.strip(),
                         "problem": new_title.strip(),
