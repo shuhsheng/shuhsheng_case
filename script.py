@@ -14,7 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 注入高清晰、高對比現代科技深色 UI
 st.markdown("""
 <style>
     /* 全域背景與文字基礎 */
@@ -33,17 +32,14 @@ st.markdown("""
         color: #f1f5f9 !important;
     }
     
-    /* 1. 所有欄位標題、Label 與說明文字全面亮化 */
+    /* 1. 欄位標籤與文字亮化 */
     label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] span {
         color: #f8fafc !important;
         font-weight: 600 !important;
         font-size: 0.95rem !important;
     }
-    .stMarkdown p {
-        color: #cbd5e1;
-    }
     
-    /* 2. 頁籤 (Tabs) 高亮清晰化：亮藍選中 + 醒目白未選 */
+    /* 2. 頁籤 (Tabs) 高亮 */
     button[data-baseweb="tab"] {
         color: #94a3b8 !important;
         font-size: 1rem !important;
@@ -59,7 +55,7 @@ st.markdown("""
         border-bottom: 2px solid #38bdf8 !important;
     }
     
-    /* 3. 輸入框美化 (微透深色質感，文字純白，消除死白) */
+    /* 3. 輸入框美化 (深色微透質感) */
     div[data-baseweb="input"], div[data-baseweb="base-input"] {
         background-color: #1e293b !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -97,7 +93,26 @@ st.markdown("""
         background-color: #1e293b !important;
     }
     
-    /* 4. KPI 統計卡片 */
+    /* 4. Expander 展開卡片深色科技化 */
+    [data-testid="stExpander"] {
+        background-color: #111827 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        margin-bottom: 0.75rem !important;
+    }
+    [data-testid="stExpander"] details summary {
+        background-color: #111827 !important;
+        color: #f8fafc !important;
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+    }
+    [data-testid="stExpander"] details summary:hover {
+        background-color: #1e293b !important;
+    }
+    
+    /* 5. KPI 統計卡片 */
     .kpi-container {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -138,38 +153,6 @@ st.markdown("""
     .badge-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
     .badge-red { background: rgba(239, 68, 68, 0.18); color: #f87171; }
     
-    /* 5. 案例 SOP 卡片 */
-    .sop-card {
-        background: #111827;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 1.25rem 1.4rem;
-        margin-bottom: 1rem;
-        border-left: 4px solid #38bdf8;
-    }
-    .sop-title {
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #f8fafc;
-        margin-bottom: 0.45rem;
-    }
-    .sop-category {
-        display: inline-block;
-        background: #1e293b;
-        color: #38bdf8;
-        padding: 0.2rem 0.55rem;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-bottom: 0.75rem;
-    }
-    .sop-content {
-        color: #cbd5e1;
-        font-size: 0.95rem;
-        line-height: 1.65;
-        white-space: pre-wrap;
-    }
-
     /* 原生提示框與按鈕 */
     .stAlert {
         background-color: #1e293b !important;
@@ -183,7 +166,7 @@ st.markdown("""
         border: none !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
-        padding: 0.5rem 1.25rem !important;
+        padding: 0.4rem 1.2rem !important;
     }
     .stButton>button:hover {
         background-color: #1d4ed8 !important;
@@ -226,14 +209,14 @@ with st.sidebar:
 
 
 # ==========================================
-# 4. 功能一：突發案件與處置知識庫 (cases)
+# 4. 功能一：突發案件與處置知識庫 (cases) - 折疊展開 + 在線編輯與刪除
 # ==========================================
 if menu == "📖 突發案件與處置知識庫":
     st.markdown("""
         <div style="margin-bottom: 1.5rem;">
             <h2 style="margin: 0; font-size: 1.7rem; font-weight: 700; color: #f8fafc;">📖 突發案件處置知識庫</h2>
             <p style="margin: 0.35rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
-                供同仁遇到突發或特殊狀況時快速檢索標準處理作業流程 (SOP)，免去重複詢問。
+                點選案例條目展開詳細處置 SOP，可直接進行編輯更新或刪除。
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -264,7 +247,7 @@ if menu == "📖 突發案件與處置知識庫":
     </div>
     """, unsafe_allow_html=True)
 
-    tab_search, tab_add = st.tabs(["🔍 查詢處置經驗與 SOP", "➕ 建立新案例紀錄"])
+    tab_search, tab_add = st.tabs(["🔍 案例知識庫清單 (點選展開編輯)", "➕ 建立新案例紀錄"])
     
     with tab_search:
         col_search, col_cat = st.columns([3, 1])
@@ -285,25 +268,57 @@ if menu == "📖 突發案件與處置知識庫":
                 or search_query.lower() in str(c.get("description", "")).lower()
             ]
         
-        st.markdown(f"<div style='margin: 0.5rem 0 1rem 0; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆相關案例紀錄</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin: 0.5rem 0 1rem 0; color: #94a3b8; font-size: 0.85rem;'>共找到 <b>{len(filtered_cases)}</b> 筆案例</div>", unsafe_allow_html=True)
         
         if filtered_cases:
+            # 依序呈現每一筆案例（單條 Expander）
             for item in filtered_cases:
+                case_id = item.get("id")
                 title = item.get("title", "未命名案件")
                 cat = item.get("category", "其他")
-                sol = item.get("solution") or item.get("description") or "尚未提供具體說明"
+                sol = item.get("solution") or item.get("description") or ""
                 created = str(item.get("created_at", ""))[:10]
                 
-                st.markdown(f"""
-                <div class="sop-card">
-                    <div class="sop-title">{title}</div>
-                    <span class="sop-category">{cat}</span>
-                    <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">紀錄日期: {created}</span>
-                    <div class="sop-content">{sol}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                expander_title = f"📋 【{cat}】{title} ｜ 建檔日期：{created}"
+                
+                with st.expander(expander_title):
+                    with st.form(f"edit_case_form_{case_id}"):
+                        edit_col1, edit_col2 = st.columns([3, 1])
+                        with edit_col1:
+                            new_title_val = st.text_input("案例名稱", value=title, key=f"t_{case_id}")
+                        with edit_col2:
+                            new_cat_val = st.text_input("分類標籤", value=cat, key=f"c_{case_id}")
+                            
+                        new_sol_val = st.text_area("處置 SOP 說明與經驗", value=sol, height=180, key=f"s_{case_id}")
+                        
+                        btn_c1, btn_c2 = st.columns([1, 5])
+                        with btn_c1:
+                            save_btn = st.form_submit_button("💾 儲存修改")
+                        
+                        if save_btn:
+                            try:
+                                supabase.table("cases").update({
+                                    "title": new_title_val.strip(),
+                                    "category": new_cat_val.strip(),
+                                    "solution": new_sol_val.strip()
+                                }).eq("id", case_id).execute()
+                                st.success("✅ 案例已更新完成！")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"更新失敗：{e}")
+                    
+                    # 獨立刪除按鈕
+                    del_col1, del_col2 = st.columns([1, 6])
+                    with del_col1:
+                        if st.button("🗑️ 刪除此案例", key=f"del_case_{case_id}"):
+                            try:
+                                supabase.table("cases").delete().eq("id", case_id).execute()
+                                st.success("已成功刪除該案例！")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"刪除失敗：{e}")
         else:
-            st.info("查無相關案例。如果解決了新狀況，歡迎點擊上方「建立新案例紀錄」頁籤進行建檔！")
+            st.info("查無相關案例。")
 
     with tab_add:
         st.markdown("#### 建立新的突發案例 SOP")
@@ -331,14 +346,14 @@ if menu == "📖 突發案件與處置知識庫":
 
 
 # ==========================================
-# 5. 功能二：移工雙月服務週期排程 (worker_service_schedules)
+# 5. 功能二：移工雙月服務週期排程 (按工人卡片展開 + 勾選編輯)
 # ==========================================
 elif menu == "📅 移工雙月服務週期排程":
     st.markdown("""
         <div style="margin-bottom: 1.5rem;">
             <h2 style="margin: 0; font-size: 1.7rem; font-weight: 700; color: #f8fafc;">📅 移工雙月服務週期排程</h2>
             <p style="margin: 0.35rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
-                追蹤每兩個月一次的定期關懷訪視、法規申報與入廠服務排程。可直接在表格內修改狀態並即時儲存。
+                依工人分組管理。點擊工人姓名展開該名移工的所有雙月期數，可直接勾選完成並即時儲存。
             </p>
         </div>
     """, unsafe_allow_html=True)
@@ -346,7 +361,7 @@ elif menu == "📅 移工雙月服務週期排程":
     schedule_data = []
     if supabase:
         try:
-            res = supabase.table("worker_service_schedules").select("*").order("target_date", desc=False).execute()
+            res = supabase.table("worker_service_schedules").select("*").order("period_number", desc=False).execute()
             schedule_data = res.data or []
         except Exception as e:
             st.error(f"讀取資料庫失敗: {e}")
@@ -355,13 +370,11 @@ elif menu == "📅 移工雙月服務週期排程":
     today = date.today()
     urgent_count = 0
     overdue_count = 0
-    total_records = len(schedule_data)
     
     for row in schedule_data:
         d_str = row.get("target_date")
         status_val = str(row.get("status", ""))
         
-        # 只針對未完成的案件進行預警統計
         if d_str and status_val != "已完成":
             try:
                 target_d = datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
@@ -373,13 +386,17 @@ elif menu == "📅 移工雙月服務週期排程":
             except:
                 pass
 
-    # 排程 KPI 卡片
+    df_raw = pd.DataFrame(schedule_data) if schedule_data else pd.DataFrame()
+    unique_workers = []
+    if not df_raw.empty and "worker_name" in df_raw.columns:
+        unique_workers = df_raw[["worker_name", "employer_name"]].drop_duplicates().to_dict(orient="records")
+
     st.markdown(f"""
     <div class="kpi-container">
         <div class="kpi-card">
-            <div class="kpi-title">排程紀錄總數</div>
-            <div class="kpi-value">{total_records} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">筆</span></div>
-            <span class="kpi-badge badge-blue">服務週期列管</span>
+            <div class="kpi-title">在線列管移工總數</div>
+            <div class="kpi-value">{len(unique_workers)} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">人</span></div>
+            <span class="kpi-badge badge-blue">總期數 {len(schedule_data)} 筆</span>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">14 天內即將到期</div>
@@ -394,82 +411,93 @@ elif menu == "📅 移工雙月服務週期排程":
     </div>
     """, unsafe_allow_html=True)
 
-    tab_sched_list, tab_sched_add = st.tabs(["📋 服務排程清單", "➕ 新增雙月服務週期"])
+    tab_sched_list, tab_sched_add = st.tabs(["📋 移工排程列表 (點選展開)", "➕ 新增雙月服務週期"])
 
     with tab_sched_list:
-        if schedule_data:
-            df = pd.DataFrame(schedule_data)
+        if not df_raw.empty:
+            search_worker = st.text_input("🔍 快速搜尋工人姓名或雇主：", placeholder="例如輸入：阿吉、素利亞、鴻勇...")
             
-            # 整理要呈現的欄位
-            display_cols = ["id", "worker_name", "employer_name", "period_number", "start_date", "target_date", "status"]
-            existing_cols = [c for c in display_cols if c in df.columns]
-            df_edit = df[existing_cols].copy()
-            
-            # 新增一個快捷勾選欄位「完成?」：如果 status 是已完成就預設勾選
-            if "status" in df_edit.columns:
-                df_edit["完成?"] = df_edit["status"] == "已完成"
-            else:
-                df_edit["完成?"] = False
+            filtered_workers = unique_workers
+            if search_worker:
+                filtered_workers = [
+                    w for w in unique_workers 
+                    if search_worker.lower() in str(w.get("worker_name", "")).lower() 
+                    or search_worker.lower() in str(w.get("employer_name", "")).lower()
+                ]
 
-            st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-bottom: 0.5rem;'>💡 提示：可直接勾選「完成?」或點選「狀態」修改，修改後點擊右下角確認儲存。</p>", unsafe_allow_html=True)
+            st.markdown(f"<div style='margin-bottom: 0.75rem; color: #94a3b8; font-size: 0.85rem;'>共 <b>{len(filtered_workers)}</b> 位移工</div>", unsafe_allow_html=True)
 
-            # 使用 st.data_editor 啟用可勾選與即時編輯功能
-            edited_df = st.data_editor(
-                df_edit,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "完成?": st.column_config.CheckboxColumn(
-                        "完成?",
-                        help="勾選即標記為已完成",
-                        default=False,
-                    ),
-                    "status": st.column_config.SelectboxColumn(
-                        "狀態",
-                        help="選擇服務進度狀態",
-                        options=["待訪視", "安排中", "已完成", "待追蹤"],
-                        required=True,
-                    ),
-                    "id": st.column_config.NumberColumn("編號", disabled=True),
-                    "worker_name": st.column_config.TextColumn("移工姓名", disabled=True),
-                    "employer_name": st.column_config.TextColumn("雇主/單位", disabled=True),
-                    "period_number": st.column_config.NumberColumn("期數", disabled=True),
-                    "start_date": st.column_config.DateColumn("起始日期", disabled=True),
-                    "target_date": st.column_config.DateColumn("目標服務日期", disabled=True),
-                },
-                key="schedule_editor"
-            )
-
-            # 比對變更並自動同步回 Supabase
-            if st.button("💾 儲存表格修改至 Supabase"):
-                changes_saved = 0
-                for idx, row in edited_df.iterrows():
-                    record_id = int(row["id"])
-                    original_row = df.loc[df["id"] == record_id].iloc[0]
-                    
-                    new_status = row["status"]
-                    # 如果勾選了「完成?」但狀態還不是已完成，則同步改成已完成
-                    if row["完成?"] and new_status != "已完成":
-                        new_status = "已完成"
-                    elif not row["完成?"] and original_row["status"] == "已完成" and new_status == "已完成":
-                        # 取消勾選時，將狀態還原成待訪視
-                        new_status = "待訪視"
-
-                    # 只要狀態有變化就發送更新
-                    if new_status != original_row["status"]:
-                        try:
-                            supabase.table("worker_service_schedules").update({
-                                "status": new_status
-                            }).eq("id", record_id).execute()
-                            changes_saved += 1
-                        except Exception as e:
-                            st.error(f"編號 {record_id} 更新失敗: {e}")
-
-                if changes_saved > 0:
-                    st.success(f"✅ 成功更新 {changes_saved} 筆資料狀態！")
-                    st.rerun()
+            for w in filtered_workers:
+                w_name = w.get("worker_name")
+                e_name = w.get("employer_name")
+                
+                w_df = df_raw[(df_raw["worker_name"] == w_name) & (df_raw["employer_name"] == e_name)].sort_values(by="period_number")
+                
+                total_p = len(w_df)
+                done_p = len(w_df[w_df["status"] == "已完成"])
+                
+                pending_df = w_df[w_df["status"] != "已完成"]
+                if not pending_df.empty:
+                    next_target = str(pending_df.iloc[0].get("target_date", "未定"))[:10]
+                    next_period = pending_df.iloc[0].get("period_number", "")
+                    status_text = f"⏳ 第 {next_period} 期待訪視（目標日：{next_target}）"
                 else:
-                    st.info("沒有偵測到任何狀態變更。")
+                    status_text = "🎉 所有期數已全數完成"
+
+                expander_label = f"👤 {w_name} ｜ 🏢 雇主：{e_name} ｜ 進度：{done_p}/{total_p} 期 ｜ {status_text}"
+                
+                with st.expander(expander_label):
+                    edit_cols = ["id", "period_number", "target_date", "status"]
+                    subset_df = w_df[[c for c in edit_cols if c in w_df.columns]].copy()
+                    
+                    subset_df["完成?"] = subset_df["status"] == "已完成"
+                    
+                    st.caption("提示：可勾選「完成?」或變更狀態，並點下方按鈕儲存變更至資料庫。")
+                    
+                    edited_subset = st.data_editor(
+                        subset_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "完成?": st.column_config.CheckboxColumn("完成?", help="勾選即完成此期服務"),
+                            "period_number": st.column_config.NumberColumn("期數", disabled=True),
+                            "target_date": st.column_config.DateColumn("目標服務日期", disabled=True),
+                            "status": st.column_config.SelectboxColumn(
+                                "狀態", 
+                                options=["待訪視", "已完成", "安排中", "待追蹤"],
+                                required=True
+                            ),
+                            "id": st.column_config.NumberColumn("編號", disabled=True),
+                        },
+                        key=f"editor_{w_name}_{e_name}"
+                    )
+                    
+                    if st.button(f"💾 儲存【{w_name}】的排程變更", key=f"btn_save_{w_name}_{e_name}"):
+                        saved_count = 0
+                        for idx, row in edited_subset.iterrows():
+                            rec_id = int(row["id"])
+                            orig = w_df.loc[w_df["id"] == rec_id].iloc[0]
+                            
+                            new_status = row["status"]
+                            if row["完成?"] and new_status != "已完成":
+                                new_status = "已完成"
+                            elif not row["完成?"] and orig["status"] == "已完成" and new_status == "已完成":
+                                new_status = "待訪視"
+                                
+                            if new_status != orig["status"]:
+                                try:
+                                    supabase.table("worker_service_schedules").update({
+                                        "status": new_status
+                                    }).eq("id", rec_id).execute()
+                                    saved_count += 1
+                                except Exception as err:
+                                    st.error(f"更新失敗: {err}")
+                        
+                        if saved_count > 0:
+                            st.success(f"✅ 【{w_name}】已成功更新 {saved_count} 期狀態！")
+                            st.rerun()
+                        else:
+                            st.info("沒有偵測到任何變更。")
         else:
             st.info("目前尚無移工服務排程紀錄。")
 
@@ -485,7 +513,7 @@ elif menu == "📅 移工雙月服務週期排程":
                 start_d = st.date_input("起始基準日期*", value=date.today())
                 default_target = start_d + relativedelta(months=2)
                 target_d = st.date_input("目標服務日期 (雙月)*", value=default_target)
-                status_choice = st.selectbox("初始狀態", ["待訪視", "安排中", "已完成", "待追蹤"])
+                status_choice = st.selectbox("初始狀態", ["待訪視", "已完成", "安排中", "待追蹤"])
             
             submitted_sched = st.form_submit_button("建立排程紀錄")
             if submitted_sched:
