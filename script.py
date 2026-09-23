@@ -344,7 +344,7 @@ if menu == "📖 突發案件與處置知識庫":
 
 
 # ==========================================
-# 5. 功能二：移工雙月服務週期排程 (按工人卡片展開 + 勾選編輯)
+# 5. 功能二：移工雙月服務週期排程 (隱藏編號 + 唯一分組 + 勾選編輯)
 # ==========================================
 elif menu == "📅 移工雙月服務週期排程":
     st.markdown("""
@@ -466,7 +466,7 @@ elif menu == "📅 移工雙月服務週期排程":
                     subset_df["狀態"] = w_df["status"]
                     subset_df["期數"] = w_df["period_number"]
                     subset_df["目標服務日期"] = w_df["target_date"]
-                    subset_df["編號"] = w_df["id"]
+                    subset_df["_hidden_id"] = w_df["id"]  # 隱藏用內部 ID
 
                     st.caption("提示：直接勾選「完成?」或修改「狀態」，再點下方按鈕即可同步存入資料庫。")
                     
@@ -483,7 +483,7 @@ elif menu == "📅 移工雙月服務週期排程":
                             ),
                             "期數": st.column_config.NumberColumn("期數", disabled=True),
                             "目標服務日期": st.column_config.TextColumn("目標服務日期", disabled=True),
-                            "編號": st.column_config.NumberColumn("編號", disabled=True),
+                            "_hidden_id": None,  # 將編號從畫面中完全隱藏
                         },
                         key=f"editor_worker_{idx}"
                     )
@@ -491,7 +491,7 @@ elif menu == "📅 移工雙月服務週期排程":
                     if st.button(f"💾 儲存【{w_name}】的排程變更", key=f"btn_save_{idx}"):
                         saved_count = 0
                         for _, row in edited_subset.iterrows():
-                            rec_id = int(row["編號"])
+                            rec_id = int(row["_hidden_id"])
                             orig_status = w_df.loc[w_df["id"] == rec_id, "status"].values[0]
                             
                             new_status = row["狀態"]
