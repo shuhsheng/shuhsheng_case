@@ -14,6 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 徹底修復側邊欄白底白字問題的高權重 CSS
 st.markdown("""
 <style>
     /* 全域背景與文字基礎 */
@@ -55,44 +56,49 @@ st.markdown("""
         border-bottom: 2px solid #38bdf8 !important;
     }
     
-    /* 全域與側邊欄輸入框、下拉選單背景修復（徹底消除白底白字） */
+    /* ====================================================
+       關鍵修復：側邊欄與全域輸入框、下拉選單背景與文字顏色強制覆蓋
+       ==================================================== */
+    /* 1. 外層容器底色強制轉為深藍灰 */
     div[data-baseweb="input"], 
     div[data-baseweb="base-input"],
-    div[data-baseweb="select"] > div {
+    div[data-baseweb="select"],
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="select"] div {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-color: rgba(255, 255, 255, 0.25) !important;
         border-radius: 8px !important;
     }
+
+    /* 聚焦邊框高亮藍 */
     div[data-baseweb="input"]:focus-within,
     div[data-baseweb="select"] > div:focus-within {
         border-color: #38bdf8 !important;
         box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* 所有輸入框內文字與密碼點點一律高亮純白 */
-    input[data-testid="stTextInputRootElement"],
-    div[data-baseweb="input"] input,
-    div[data-baseweb="base-input"] input,
-    textarea {
+    /* 2. 輸入文字與密碼遮罩點點純白顯示 */
+    input, 
+    input[type="text"], 
+    input[type="password"],
+    textarea,
+    div[data-baseweb="input"] input {
         color: #ffffff !important;
-        background-color: #1e293b !important;
         -webkit-text-fill-color: #ffffff !important;
-        caret-color: #ffffff !important;
-    }
-    input::placeholder, textarea::placeholder {
-        color: #94a3b8 !important;
+        background-color: #1e293b !important;
+        caret-color: #38bdf8 !important;
     }
 
-    /* 下拉選單顯示文字一律純白 */
+    /* 3. 下拉選單中顯示的文字純白 */
     div[data-baseweb="select"] * {
         color: #ffffff !important;
-        background-color: transparent !important;
+        -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* 下拉選單展開後的選單浮層樣式 */
-    ul[data-baseweb="menu"] {
+    /* 4. 下拉展開浮層選單背景與選項 */
+    ul[data-baseweb="menu"], 
+    div[data-baseweb="popover"] div {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
     li[data-baseweb="menu-item"] {
         color: #ffffff !important;
@@ -102,13 +108,6 @@ st.markdown("""
         background-color: #334155 !important;
     }
 
-    /* 數字與日期輸入框 */
-    div[data-testid="stNumberInput"] input, div[data-testid="stDateInput"] input {
-        color: #ffffff !important;
-        background-color: #1e293b !important;
-        -webkit-text-fill-color: #ffffff !important;
-    }
-    
     /* Expander 展開卡片深色科技化 */
     [data-testid="stExpander"] {
         background-color: #111827 !important;
@@ -394,7 +393,6 @@ if menu == "📅 移工雙月服務週期排程":
                     subset_df = pd.DataFrame()
                     subset_df["完成?"] = (w_df["status"] == "已完成")
                     subset_df["狀態"] = w_df["status"]
-                    # 格式化為置中文字格式
                     subset_df["期數"] = w_df["period_number"].apply(lambda x: f"第 {x} 期")
                     subset_df["目標服務日期"] = w_df["target_date"]
                     subset_df["_hidden_id"] = w_df["id"]
@@ -414,7 +412,7 @@ if menu == "📅 移工雙月服務週期排程":
                             ),
                             "期數": st.column_config.TextColumn("期數", disabled=True),
                             "目標服務日期": st.column_config.TextColumn("目標服務日期", disabled=True),
-                            "_hidden_id": None,  # 隱藏內部 ID
+                            "_hidden_id": None,
                         },
                         key=f"editor_worker_{idx}"
                     )
@@ -564,11 +562,9 @@ elif menu == "📖 突發案件與處置知識庫":
                 
                 with st.expander(expander_title):
                     if current_role == "外務":
-                        # 外務只讀檢索
                         st.markdown(f"**類別標籤**：`{cat}` ｜ **建檔日期**：`{created}`")
                         st.markdown(f"<div class='sop-view-box'>{sol}</div>", unsafe_allow_html=True)
                     else:
-                        # 行政與老闆編輯模式
                         with st.form(f"edit_case_form_{case_id}"):
                             edit_col1, edit_col2 = st.columns([3, 1])
                             with edit_col1:
@@ -594,7 +590,6 @@ elif menu == "📖 突發案件與處置知識庫":
                                 except Exception as e:
                                     st.error(f"更新失敗：{e}")
                         
-                        # 唯一只有老闆可以刪除
                         if current_role == "老闆":
                             del_col1, del_col2 = st.columns([1, 6])
                             with del_col1:
