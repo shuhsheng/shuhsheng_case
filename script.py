@@ -59,7 +59,7 @@ st.markdown("""
         border-bottom: 2px solid #38bdf8 !important;
     }
     
-    /* 3. 輸入框美化 (微透深色質感，文字純白，消除刺眼死白) */
+    /* 3. 輸入框美化 (微透深色質感，文字純白，消除死白) */
     div[data-baseweb="input"], div[data-baseweb="base-input"] {
         background-color: #1e293b !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -238,7 +238,6 @@ if menu == "📖 突發案件與處置知識庫":
         </div>
     """, unsafe_allow_html=True)
     
-    # 讀取 cases 資料
     cases_data = []
     if supabase:
         try:
@@ -247,7 +246,6 @@ if menu == "📖 突發案件與處置知識庫":
         except Exception as e:
             st.error(f"讀取資料庫失敗: {e}")
 
-    # 頂部 KPI 卡片
     total_cases = len(cases_data)
     cat_count = len(set([c.get("category", "") for c in cases_data if c.get("category")]))
     
@@ -276,7 +274,6 @@ if menu == "📖 突發案件與處置知識庫":
             all_categories = ["全部分類"] + sorted(list(set([c.get("category", "其他") for c in cases_data if c.get("category")])))
             selected_cat = st.selectbox("分類篩選", all_categories)
         
-        # 篩選邏輯
         filtered_cases = cases_data
         if selected_cat != "全部分類":
             filtered_cases = [c for c in filtered_cases if c.get("category") == selected_cat]
@@ -341,12 +338,11 @@ elif menu == "📅 移工雙月服務週期排程":
         <div style="margin-bottom: 1.5rem;">
             <h2 style="margin: 0; font-size: 1.7rem; font-weight: 700; color: #f8fafc;">📅 移工雙月服務週期排程</h2>
             <p style="margin: 0.35rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
-                追蹤每兩個月一次的定期關懷訪視、法規申報與入廠服務排程。
+                追蹤每兩個月一次的定期關懷訪視、法規申報與入廠服務排程。可直接在表格內修改狀態並即時儲存。
             </p>
         </div>
     """, unsafe_allow_html=True)
     
-    # 讀取排程資料（使用對應的 target_date）
     schedule_data = []
     if supabase:
         try:
@@ -404,20 +400,76 @@ elif menu == "📅 移工雙月服務週期排程":
         if schedule_data:
             df = pd.DataFrame(schedule_data)
             
-            # 對齊你的真實欄位名稱
-            col_rename = {
-                "id": "編號",
-                "worker_name": "移工姓名",
-                "employer_name": "雇主/單位",
-                "period_number": "期數",
-                "start_date": "起始日期",
-                "target_date": "目標服務日期",
-                "status": "狀態"
-            }
-            display_cols = [c for c in col_rename.keys() if c in df.columns]
-            df_display = df[display_cols].rename(columns=col_rename)
+            # 整理要呈現的欄位
+            display_cols = ["id", "worker_name", "employer_name", "period_number", "start_date", "target_date", "status"]
+            existing_cols = [c for c in display_cols if c in df.columns]
+            df_edit = df[existing_cols].copy()
             
-            st.dataframe(df_display, use_container_width=True, hide_index=True)
+            # 新增一個快捷勾選欄位「完成?」：如果 status 是已完成就預設勾選
+            if "status" in df_edit.columns:
+                df_edit["完成?"] = df_edit["status"] == "已完成"
+            else:
+                df_edit["完成?"] = False
+
+            st.markdown("<p style='font-size:0.85rem; color:#94a3b8; margin-bottom: 0.5rem;'>💡 提示：可直接勾選「完成?」或點選「狀態」修改，修改後點擊右下角確認儲存。</p>", unsafe_allow_html=True)
+
+            # 使用 st.data_editor 啟用可勾選與即時編輯功能
+            edited_df = st.data_editor(
+                df_edit,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "完成?": st.column_config.CheckboxColumn(
+                        "完成?",
+                        help="勾選即標記為已完成",
+                        default=False,
+                    ),
+                    "status": st.column_config.SelectboxColumn(
+                        "狀態",
+                        help="選擇服務進度狀態",
+                        options=["待訪視", "安排中", "已完成", "待追蹤"],
+                        required=True,
+                    ),
+                    "id": st.column_config.NumberColumn("編號", disabled=True),
+                    "worker_name": st.column_config.TextColumn("移工姓名", disabled=True),
+                    "employer_name": st.column_config.TextColumn("雇主/單位", disabled=True),
+                    "period_number": st.column_config.NumberColumn("期數", disabled=True),
+                    "start_date": st.column_config.DateColumn("起始日期", disabled=True),
+                    "target_date": st.column_config.DateColumn("目標服務日期", disabled=True),
+                },
+                key="schedule_editor"
+            )
+
+            # 比對變更並自動同步回 Supabase
+            if st.button("💾 儲存表格修改至 Supabase"):
+                changes_saved = 0
+                for idx, row in edited_df.iterrows():
+                    record_id = int(row["id"])
+                    original_row = df.loc[df["id"] == record_id].iloc[0]
+                    
+                    new_status = row["status"]
+                    # 如果勾選了「完成?」但狀態還不是已完成，則同步改成已完成
+                    if row["完成?"] and new_status != "已完成":
+                        new_status = "已完成"
+                    elif not row["完成?"] and original_row["status"] == "已完成" and new_status == "已完成":
+                        # 取消勾選時，將狀態還原成待訪視
+                        new_status = "待訪視"
+
+                    # 只要狀態有變化就發送更新
+                    if new_status != original_row["status"]:
+                        try:
+                            supabase.table("worker_service_schedules").update({
+                                "status": new_status
+                            }).eq("id", record_id).execute()
+                            changes_saved += 1
+                        except Exception as e:
+                            st.error(f"編號 {record_id} 更新失敗: {e}")
+
+                if changes_saved > 0:
+                    st.success(f"✅ 成功更新 {changes_saved} 筆資料狀態！")
+                    st.rerun()
+                else:
+                    st.info("沒有偵測到任何狀態變更。")
         else:
             st.info("目前尚無移工服務排程紀錄。")
 
@@ -431,10 +483,9 @@ elif menu == "📅 移工雙月服務週期排程":
                 period_num = st.number_input("服務期數 (第幾期)", min_value=1, value=1, step=1)
             with col_w2:
                 start_d = st.date_input("起始基準日期*", value=date.today())
-                # 預設自動推算雙月 (+2 個月)
                 default_target = start_d + relativedelta(months=2)
                 target_d = st.date_input("目標服務日期 (雙月)*", value=default_target)
-                status_choice = st.selectbox("初始狀態", ["安排中", "已完成", "待追蹤"])
+                status_choice = st.selectbox("初始狀態", ["待訪視", "安排中", "已完成", "待追蹤"])
             
             submitted_sched = st.form_submit_button("建立排程紀錄")
             if submitted_sched:
