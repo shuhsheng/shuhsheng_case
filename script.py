@@ -10,7 +10,55 @@ st.set_page_config(
     page_icon="📋",
     layout="wide"
 )
+st.set_page_config(
+    page_title="業務營運管理儀表板",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
+# 注入深色科技感主題樣式
+st.markdown(
+    """
+<style>
+    .stApp {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    /* KPI 指標卡片 */
+    .kpi-card {
+        background: #111827;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .kpi-title {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-bottom: 0.4rem;
+    }
+    .kpi-value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    .kpi-badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 # -------------------------------------------------------------
 # 1. 資料庫連線 (Supabase)
 # -------------------------------------------------------------
