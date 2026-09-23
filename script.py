@@ -5,7 +5,7 @@ from dateutil.relativedelta import relativedelta
 from supabase import create_client, Client
 
 # ==========================================
-# 1. 頁面基礎設定與精緻深色科技主題 CSS
+# 1. 頁面基礎設定與精緻高對比深色主題 CSS
 # ==========================================
 st.set_page_config(
     page_title="業務管理與服務追蹤系統",
@@ -14,13 +14,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 注入自訂現代化深色 UI 樣式
+# 注入高清晰、高對比現代科技深色 UI
 st.markdown("""
 <style>
-    /* 全域深色背景與文字 */
+    /* 全域背景與文字基礎 */
     .stApp {
         background-color: #0b0f19 !important;
-        color: #f1f5f9 !important;
+        color: #f8fafc !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     
@@ -30,65 +30,89 @@ st.markdown("""
         border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
     }
     [data-testid="stSidebar"] * {
-        color: #cbd5e1 !important;
+        color: #f1f5f9 !important;
     }
     
-    /* 輸入框美化 (消除死白長條) */
-    div[data-baseweb="input"] {
+    /* 1. 所有欄位標題、Label 與說明文字全面亮化 */
+    label, [data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] span {
+        color: #f8fafc !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+    }
+    .stMarkdown p {
+        color: #cbd5e1;
+    }
+    
+    /* 2. 頁籤 (Tabs) 高亮清晰化：亮藍選中 + 醒目白未選 */
+    button[data-baseweb="tab"] {
+        color: #94a3b8 !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        background-color: transparent !important;
+    }
+    button[data-baseweb="tab"]:hover {
+        color: #f8fafc !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #38bdf8 !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #38bdf8 !important;
+    }
+    
+    /* 3. 輸入框美化 (微透深色質感，文字純白，消除刺眼死白) */
+    div[data-baseweb="input"], div[data-baseweb="base-input"] {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 8px !important;
     }
     div[data-baseweb="input"]:focus-within {
         border-color: #38bdf8 !important;
-        box-shadow: 0 0 0 1px #38bdf8 !important;
+        box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
     }
-    input.st-bc, div[data-baseweb="input"] input {
-        color: #ffffff !important;
-        background-color: transparent !important;
-    }
+    input[data-testid="stTextInputRootElement"], 
+    div[data-baseweb="input"] input,
     textarea {
-        background-color: #1e293b !important;
         color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 8px !important;
+        background-color: #1e293b !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
+    input::placeholder, textarea::placeholder {
+        color: #64748b !important;
     }
     
     /* 下拉選單 Selectbox */
     div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 8px !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="select"] span {
+        color: #ffffff !important;
     }
     
-    /* 分頁標籤 Tabs */
-    button[data-baseweb="tab"] {
-        color: #94a3b8 !important;
-        font-weight: 500 !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #38bdf8 !important;
-        border-bottom-color: #38bdf8 !important;
-        font-weight: 700 !important;
+    /* 數字與日期輸入框 */
+    div[data-testid="stNumberInput"] input, div[data-testid="stDateInput"] input {
+        color: #ffffff !important;
+        background-color: #1e293b !important;
     }
     
-    /* KPI 統計卡片 */
+    /* 4. KPI 統計卡片 */
     .kpi-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
     .kpi-card {
         background: #111827;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
-        padding: 1.1rem 1.25rem;
+        padding: 1.15rem 1.35rem;
         box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.4);
     }
     .kpi-title {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         color: #94a3b8;
         font-weight: 500;
         text-transform: uppercase;
@@ -96,7 +120,7 @@ st.markdown("""
         margin-bottom: 0.35rem;
     }
     .kpi-value {
-        font-size: 1.75rem;
+        font-size: 1.85rem;
         font-weight: 700;
         color: #f8fafc;
         line-height: 1.2;
@@ -104,22 +128,22 @@ st.markdown("""
     .kpi-badge {
         display: inline-block;
         font-size: 0.72rem;
-        padding: 0.2rem 0.5rem;
+        padding: 0.2rem 0.55rem;
         border-radius: 9999px;
         font-weight: 600;
         margin-top: 0.5rem;
     }
-    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
-    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-blue { background: rgba(56, 189, 248, 0.18); color: #38bdf8; }
+    .badge-green { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+    .badge-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    .badge-red { background: rgba(239, 68, 68, 0.18); color: #f87171; }
     
-    /* 知識庫案例卡片 */
+    /* 5. 案例 SOP 卡片 */
     .sop-card {
         background: #111827;
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
-        padding: 1.25rem;
+        padding: 1.25rem 1.4rem;
         margin-bottom: 1rem;
         border-left: 4px solid #38bdf8;
     }
@@ -127,30 +151,42 @@ st.markdown("""
         font-size: 1.15rem;
         font-weight: 600;
         color: #f8fafc;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.45rem;
     }
     .sop-category {
         display: inline-block;
         background: #1e293b;
-        color: #94a3b8;
-        padding: 0.15rem 0.5rem;
+        color: #38bdf8;
+        padding: 0.2rem 0.55rem;
         border-radius: 6px;
         font-size: 0.75rem;
+        font-weight: 600;
         margin-bottom: 0.75rem;
     }
     .sop-content {
         color: #cbd5e1;
-        font-size: 0.925rem;
-        line-height: 1.6;
+        font-size: 0.95rem;
+        line-height: 1.65;
         white-space: pre-wrap;
     }
 
-    /* Streamlit 原生提示框美化 */
+    /* 原生提示框與按鈕 */
     .stAlert {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        color: #cbd5e1 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #f1f5f9 !important;
         border-radius: 10px !important;
+    }
+    .stButton>button {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 0.5rem 1.25rem !important;
+    }
+    .stButton>button:hover {
+        background-color: #1d4ed8 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -195,8 +231,8 @@ with st.sidebar:
 if menu == "📖 突發案件與處置知識庫":
     st.markdown("""
         <div style="margin-bottom: 1.5rem;">
-            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700;">📖 突發案件處置知識庫</h2>
-            <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
+            <h2 style="margin: 0; font-size: 1.7rem; font-weight: 700; color: #f8fafc;">📖 突發案件處置知識庫</h2>
+            <p style="margin: 0.35rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
                 供同仁遇到突發或特殊狀況時快速檢索標準處理作業流程 (SOP)，免去重複詢問。
             </p>
         </div>
@@ -206,8 +242,8 @@ if menu == "📖 突發案件與處置知識庫":
     cases_data = []
     if supabase:
         try:
-            res = supabase.table("cases").select("*").order("created_at", desc=True).execute()
-            cases_data = res.data
+            res = supabase.table("cases").select("*").execute()
+            cases_data = res.data or []
         except Exception as e:
             st.error(f"讀取資料庫失敗: {e}")
 
@@ -235,7 +271,7 @@ if menu == "📖 突發案件與處置知識庫":
     with tab_search:
         col_search, col_cat = st.columns([3, 1])
         with col_search:
-            search_query = st.text_input("🔍 輸入關鍵字查詢 (如：健檢不合格、失聯、急診、證件補發...)", placeholder="輸入搜尋關鍵字...")
+            search_query = st.text_input("輸入關鍵字查詢 (如：健檢不合格、失聯、急診、證件補發...)", placeholder="輸入搜尋關鍵字...")
         with col_cat:
             all_categories = ["全部分類"] + sorted(list(set([c.get("category", "其他") for c in cases_data if c.get("category")])))
             selected_cat = st.selectbox("分類篩選", all_categories)
@@ -303,19 +339,19 @@ if menu == "📖 突發案件與處置知識庫":
 elif menu == "📅 移工雙月服務週期排程":
     st.markdown("""
         <div style="margin-bottom: 1.5rem;">
-            <h2 style="margin: 0; font-size: 1.65rem; font-weight: 700;">📅 移工雙月服務週期排程</h2>
-            <p style="margin: 0.3rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
+            <h2 style="margin: 0; font-size: 1.7rem; font-weight: 700; color: #f8fafc;">📅 移工雙月服務週期排程</h2>
+            <p style="margin: 0.35rem 0 0 0; color: #94a3b8; font-size: 0.9rem;">
                 追蹤每兩個月一次的定期關懷訪視、法規申報與入廠服務排程。
             </p>
         </div>
     """, unsafe_allow_html=True)
     
-    # 讀取排程資料
+    # 讀取排程資料（使用對應的 target_date）
     schedule_data = []
     if supabase:
         try:
-            res = supabase.table("worker_service_schedules").select("*").order("next_service_date", desc=False).execute()
-            schedule_data = res.data
+            res = supabase.table("worker_service_schedules").select("*").order("target_date", desc=False).execute()
+            schedule_data = res.data or []
         except Exception as e:
             st.error(f"讀取資料庫失敗: {e}")
 
@@ -323,14 +359,17 @@ elif menu == "📅 移工雙月服務週期排程":
     today = date.today()
     urgent_count = 0
     overdue_count = 0
-    total_workers = len(schedule_data)
+    total_records = len(schedule_data)
     
     for row in schedule_data:
-        d_str = row.get("next_service_date")
-        if d_str:
+        d_str = row.get("target_date")
+        status_val = str(row.get("status", ""))
+        
+        # 只針對未完成的案件進行預警統計
+        if d_str and status_val != "已完成":
             try:
-                target_date = datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
-                days_left = (target_date - today).days
+                target_d = datetime.strptime(str(d_str)[:10], "%Y-%m-%d").date()
+                days_left = (target_d - today).days
                 if days_left < 0:
                     overdue_count += 1
                 elif days_left <= 14:
@@ -342,60 +381,60 @@ elif menu == "📅 移工雙月服務週期排程":
     st.markdown(f"""
     <div class="kpi-container">
         <div class="kpi-card">
-            <div class="kpi-title">列管名冊總數</div>
-            <div class="kpi-value">{total_workers} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">人</span></div>
-            <span class="kpi-badge badge-blue">在線追蹤中</span>
+            <div class="kpi-title">排程紀錄總數</div>
+            <div class="kpi-value">{total_records} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">筆</span></div>
+            <span class="kpi-badge badge-blue">服務週期列管</span>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">兩週內即將到期</div>
+            <div class="kpi-title">14 天內即將到期</div>
             <div class="kpi-value" style="color: #fbbf24;">{urgent_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">件</span></div>
-            <span class="kpi-badge badge-amber">需儘快排定訪視</span>
+            <span class="kpi-badge badge-amber">待安排入廠訪視</span>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">已逾期未完成</div>
             <div class="kpi-value" style="color: #f87171;">{overdue_count} <span style="font-size: 0.9rem; color: #64748b; font-weight: 400;">件</span></div>
-            <span class="kpi-badge badge-red">請立即確認進度</span>
+            <span class="kpi-badge badge-red">請儘速確認進度</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    tab_sched_list, tab_sched_add = st.tabs(["📋 服務排程清單", "➕ 新增移工服務週期"])
+    tab_sched_list, tab_sched_add = st.tabs(["📋 服務排程清單", "➕ 新增雙月服務週期"])
 
     with tab_sched_list:
         if schedule_data:
             df = pd.DataFrame(schedule_data)
             
-            # 處理欄位呈現
+            # 對齊你的真實欄位名稱
             col_rename = {
+                "id": "編號",
                 "worker_name": "移工姓名",
-                "employer_name": "雇主/聘僱單位",
-                "nationality": "國籍",
-                "last_service_date": "上次服務日期",
-                "next_service_date": "下次預計服務日期",
-                "status": "狀態",
-                "notes": "備註"
+                "employer_name": "雇主/單位",
+                "period_number": "期數",
+                "start_date": "起始日期",
+                "target_date": "目標服務日期",
+                "status": "狀態"
             }
             display_cols = [c for c in col_rename.keys() if c in df.columns]
             df_display = df[display_cols].rename(columns=col_rename)
             
             st.dataframe(df_display, use_container_width=True, hide_index=True)
         else:
-            st.info("目前尚無移工服務排程紀錄，請由上方頁籤新增資料。")
+            st.info("目前尚無移工服務排程紀錄。")
 
     with tab_sched_add:
-        st.markdown("#### 新增列管排程紀錄")
+        st.markdown("#### 新增雙月服務週期紀錄")
         with st.form("add_sched_form", clear_on_submit=True):
             col_w1, col_w2 = st.columns(2)
             with col_w1:
                 worker_name = st.text_input("移工姓名*")
                 employer_name = st.text_input("雇主/廠區名稱*")
-                nationality = st.selectbox("國籍", ["印尼", "菲律賓", "越南", "泰國", "其他"])
+                period_num = st.number_input("服務期數 (第幾期)", min_value=1, value=1, step=1)
             with col_w2:
-                last_date = st.date_input("本次/上次服務日期", value=date.today())
-                # 自動推算雙月 (+2 個月)
-                default_next = last_date + relativedelta(months=2)
-                next_date = st.date_input("下次預估雙月服務日期", value=default_next)
-                notes = st.text_input("備註說明 (如：指定訪視重點、需攜帶文件)")
+                start_d = st.date_input("起始基準日期*", value=date.today())
+                # 預設自動推算雙月 (+2 個月)
+                default_target = start_d + relativedelta(months=2)
+                target_d = st.date_input("目標服務日期 (雙月)*", value=default_target)
+                status_choice = st.selectbox("初始狀態", ["安排中", "已完成", "待追蹤"])
             
             submitted_sched = st.form_submit_button("建立排程紀錄")
             if submitted_sched:
@@ -406,14 +445,13 @@ elif menu == "📅 移工雙月服務週期排程":
                         payload = {
                             "worker_name": worker_name.strip(),
                             "employer_name": employer_name.strip(),
-                            "nationality": nationality,
-                            "last_service_date": str(last_date),
-                            "next_service_date": str(next_date),
-                            "status": "安排中",
-                            "notes": notes.strip() if notes else ""
+                            "start_date": str(start_d),
+                            "period_number": int(period_num),
+                            "target_date": str(target_d),
+                            "status": status_choice
                         }
                         supabase.table("worker_service_schedules").insert(payload).execute()
-                        st.success("✅ 排程紀錄建立成功！")
+                        st.success("✅ 排程紀錄已成功新增至 Supabase！")
                         st.rerun()
                     except Exception as e:
                         st.error(f"新增失敗：{e}")
