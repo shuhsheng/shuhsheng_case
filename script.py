@@ -55,42 +55,58 @@ st.markdown("""
         border-bottom: 2px solid #38bdf8 !important;
     }
     
-    /* 輸入框美化 (深色微透質感) */
-    div[data-baseweb="input"], div[data-baseweb="base-input"] {
+    /* 全域與側邊欄輸入框、下拉選單背景修復（徹底消除白底白字） */
+    div[data-baseweb="input"], 
+    div[data-baseweb="base-input"],
+    div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
         border-radius: 8px !important;
     }
-    div[data-baseweb="input"]:focus-within {
+    div[data-baseweb="input"]:focus-within,
+    div[data-baseweb="select"] > div:focus-within {
         border-color: #38bdf8 !important;
         box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
     }
-    input[data-testid="stTextInputRootElement"], 
+
+    /* 所有輸入框內文字與密碼點點一律高亮純白 */
+    input[data-testid="stTextInputRootElement"],
     div[data-baseweb="input"] input,
+    div[data-baseweb="base-input"] input,
     textarea {
         color: #ffffff !important;
         background-color: #1e293b !important;
         -webkit-text-fill-color: #ffffff !important;
+        caret-color: #ffffff !important;
     }
     input::placeholder, textarea::placeholder {
-        color: #64748b !important;
+        color: #94a3b8 !important;
     }
-    
-    /* 下拉選單 Selectbox */
-    div[data-baseweb="select"] > div {
+
+    /* 下拉選單顯示文字一律純白 */
+    div[data-baseweb="select"] * {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+
+    /* 下拉選單展開後的選單浮層樣式 */
+    ul[data-baseweb="menu"] {
         background-color: #1e293b !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 8px !important;
-        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
-    div[data-baseweb="select"] span {
+    li[data-baseweb="menu-item"] {
         color: #ffffff !important;
+        background-color: #1e293b !important;
     }
-    
+    li[data-baseweb="menu-item"]:hover {
+        background-color: #334155 !important;
+    }
+
     /* 數字與日期輸入框 */
     div[data-testid="stNumberInput"] input, div[data-testid="stDateInput"] input {
         color: #ffffff !important;
         background-color: #1e293b !important;
+        -webkit-text-fill-color: #ffffff !important;
     }
     
     /* Expander 展開卡片深色科技化 */
@@ -254,7 +270,7 @@ current_role = st.session_state["user_role"]
 
 
 # ==========================================
-# 4. 模組一：移工雙月服務週期排程
+# 4. 模組一：移工雙月服務週期排程 (隱藏編號 + 期數置中)
 # ==========================================
 if menu == "📅 移工雙月服務週期排程":
     st.markdown(f"""
@@ -330,7 +346,6 @@ if menu == "📅 移工雙月服務週期排程":
     </div>
     """, unsafe_allow_html=True)
 
-    # 權限分流：外務不顯示「新增排程」頁籤
     if current_role in ["行政", "老闆"]:
         tabs = st.tabs(["📋 移工排程列表 (點選展開)", "➕ 新增雙月服務週期"])
         tab_sched_list = tabs[0]
@@ -379,6 +394,7 @@ if menu == "📅 移工雙月服務週期排程":
                     subset_df = pd.DataFrame()
                     subset_df["完成?"] = (w_df["status"] == "已完成")
                     subset_df["狀態"] = w_df["status"]
+                    # 格式化為置中文字格式
                     subset_df["期數"] = w_df["period_number"].apply(lambda x: f"第 {x} 期")
                     subset_df["目標服務日期"] = w_df["target_date"]
                     subset_df["_hidden_id"] = w_df["id"]
@@ -398,7 +414,7 @@ if menu == "📅 移工雙月服務週期排程":
                             ),
                             "期數": st.column_config.TextColumn("期數", disabled=True),
                             "目標服務日期": st.column_config.TextColumn("目標服務日期", disabled=True),
-                            "_hidden_id": None,
+                            "_hidden_id": None,  # 隱藏內部 ID
                         },
                         key=f"editor_worker_{idx}"
                     )
@@ -507,7 +523,6 @@ elif menu == "📖 突發案件與處置知識庫":
     </div>
     """, unsafe_allow_html=True)
 
-    # 權限分流：外務不顯示「建立新案例」頁籤
     if current_role in ["行政", "老闆"]:
         tabs = st.tabs(["🔍 案例知識庫清單", "➕ 建立新案例紀錄"])
         tab_case_list = tabs[0]
@@ -549,7 +564,7 @@ elif menu == "📖 突發案件與處置知識庫":
                 
                 with st.expander(expander_title):
                     if current_role == "外務":
-                        # 外務只讀模式
+                        # 外務只讀檢索
                         st.markdown(f"**類別標籤**：`{cat}` ｜ **建檔日期**：`{created}`")
                         st.markdown(f"<div class='sop-view-box'>{sol}</div>", unsafe_allow_html=True)
                     else:
@@ -579,7 +594,7 @@ elif menu == "📖 突發案件與處置知識庫":
                                 except Exception as e:
                                     st.error(f"更新失敗：{e}")
                         
-                        # 只有老闆可以刪除
+                        # 唯一只有老闆可以刪除
                         if current_role == "老闆":
                             del_col1, del_col2 = st.columns([1, 6])
                             with del_col1:
